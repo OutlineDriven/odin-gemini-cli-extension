@@ -1,153 +1,7 @@
 {
-  "contextFileName": "AGENTS.md",
-  "data_collection_enabled": false,
-  "privacy": {
-    "usageStatisticsEnabled": false
-  },
-  "excludeTools": [
-    "Shell(sed -i)",
-    "Shell(sed --in-place)",
-    "Shell(grep -r)",
-    "Shell(grep -R)",
-    "Shell(sudo)",
-    "Shell(rm -rf /)",
-    "Shell(rm -rf /*)",
-    "Shell(rmdir /)",
-    "Shell(rmdir /*)",
-    "Shell(rm -rf /dev/)",
-    "Shell(rm -rf /proc/)",
-    "Shell(rm -rf /sys/)",
-    "Shell(rm -rf /tmp/)",
-    "Shell(rm -rf /var/)",
-    "Shell(rm -rf /mnt/)",
-    "Shell(rm -rf /media/)",
-    "Shell(rm -rf /run/)",
-    "Shell(rm -rf /snap/)",
-    "Shell(rm -rf /srv/)",
-    "Shell(chmod 777 /*)",
-    "Shell(chmod -R 777*)",
-    "Shell(chmod -R 000*)",
-    "Shell(chown -R root:root /*)",
-    "Shell(chown -R nobody:nobody /*)",
-    "Shell(mv /* /*)",
-    "Shell(cp /dev/urandom /dev/*)",
-    "Shell(cat /dev/urandom > /dev/*)",
-    "Shell(cat /dev/zero > /dev/*)",
-    "Shell(fdisk*)",
-    "Shell(parted*)",
-    "Shell(cfdisk*)",
-    "Shell(gdisk*)",
-    "Shell(sgdisk*)",
-    "Shell(mkswap*)",
-    "Shell(swapon /dev/*)",
-    "Shell(swapoff -a)",
-    "Shell(mount /dev/* /*)",
-    "Shell(umount -f)",
-    "Shell(umount -l)",
-    "Shell(mount -o remount)",
-    "Shell(kill -9 -1)",
-    "Shell(killall -9)",
-    "Shell(pkill -f)",
-    "Shell(pkill -9)",
-    "Shell(killall -KILL)",
-    "Shell(init 0)",
-    "Shell(init 6)",
-    "Shell(shutdown)",
-    "Shell(reboot)",
-    "Shell(halt)",
-    "Shell(poweroff)",
-    "Shell(systemctl stop)",
-    "Shell(systemctl disable)",
-    "Shell(systemctl mask)",
-    "Shell(systemctl isolate)",
-    "Shell(service * stop)",
-    "Shell(wget * | sh)",
-    "Shell(curl * | sh)",
-    "Shell(curl * | bash)",
-    "Shell(curl * | zsh)",
-    "Shell(bash <(curl)",
-    "Shell(sh <(curl)",
-    "Shell(zsh <(curl)",
-    "Shell(eval $(curl)",
-    "Shell(python -c \"exec)",
-    "Shell(python3 -c \"exec)",
-    "Shell(perl -e)",
-    "Shell(ruby -e)",
-    "Shell(node -e)",
-    "Shell(echo * | base64 -d | sh)",
-    "Shell(echo * | base64 -d | bash)",
-    "Shell(nc -l)",
-    "Shell(netcat -l)",
-    "Shell(socat)",
-    "Shell(telnet)",
-    "Shell(ssh-keygen)",
-    "Shell(openssl genrsa)",
-    "Shell(openssl req)",
-    "Shell(gpg --gen-key)",
-    "Shell(iptables -F)",
-    "Shell(iptables -X)",
-    "Shell(iptables -P)",
-    "Shell(ip6tables -F)",
-    "Shell(ufw --force reset)",
-    "Shell(ufw disable)",
-    "Shell(shred)",
-    "Shell(wipe)",
-    "Shell(srm)",
-    "Shell(secure-delete)",
-    "Shell(find /* -delete)",
-    "Shell(find /* -exec rm)",
-    "Shell(find /* -type f -delete)",
-    "Shell(xargs rm)",
-    "Shell(yes | )",
-    "Shell(while true; do)",
-    "Shell(while :; do)",
-    "Shell(for i in {1..999999})",
-    "Shell(git push -f)",
-    "Shell(git push --force)",
-    "Shell(git push --force-with-lease)",
-    "Shell(git commit --amend)",
-    "Shell(git commit --amend --no-edit)",
-    "Shell(git commit --amend --no-verify)",
-    "Shell(git commit --no-verify)",
-    "Shell(git commit --no-verify -m)",
-    "Shell(git commit --no-verify -m -)",
-    "Shell(git commit --no-verify -m - -)",
-    "Shell(git commit --no-verify -m - - -)",
-    "Shell(git commit --no-verify -m - - - -)"
-  ],
-  "security": {
-    "folderTrust": {
-      "featureEnabled": true
-    },
-    "auth": {
-      "selectedType": "oauth-personal"
-    }
-  },
-  "ui": {
-    "showLineNumbers": true,
-    "hideTips": true,
-    "hideBanner": true,
-    "showCitations": true,
-    "showMemoryUsage": true
-  },
-  "output": {
-    "format": "text"
-  },
-  "context": {
-    "loadMemoryFromIncludeDirectories": true,
-    "fileFiltering": {
-      "respectGitIgnore": false
-    }
-  },
-  "tools": {
-    "autoAccept": true,
-    "shell": {
-      "showColor": true
-    },
-    "enableMessageBusIntegration": true
-  },
-  "general": {
-    "enablePromptCompletion": true
+  "ide": {
+    "hasSeenNudge": true,
+    "enabled": true
   },
   "mcpServers": {
     "ast-grep": {
@@ -161,6 +15,7 @@
     "context7": {
       "command": "npx",
       "args": [
+        "-y",
         "@upstash/context7-mcp@latest"
       ]
     },
@@ -173,6 +28,7 @@
     "sequentialthinking-tools": {
       "command": "npx",
       "args": [
+        "-y",
         "mcp-sequentialthinking-tools"
       ]
     },
@@ -189,13 +45,157 @@
         "-y",
         "server-shannon-thinking@latest"
       ]
-    },
-    "aid": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@janreges/ai-distiller-mcp"
-      ]
     }
+  },
+  "context": {
+    "loadMemoryFromIncludeDirectories": true,
+    "fileFiltering": {
+      "respectGitIgnore": false
+    },
+    "fileName": "AGENTS.md"
+  },
+  "tools": {
+    "autoAccept": true,
+    "shell": {
+      "pager": "bat",
+      "showColor": true
+    },
+    "truncateToolOutputThreshold": 10000000,
+    "truncateToolOutputLines": 5000,
+    "enableMessageBusIntegration": true,
+    "exclude": [
+      "Shell(sed -i)",
+      "Shell(sed --in-place)",
+      "Shell(grep -r)",
+      "Shell(grep -R)",
+      "Shell(sudo)",
+      "Shell(rm -rf /)",
+      "Shell(rm -rf /*)",
+      "Shell(rmdir /)",
+      "Shell(rmdir /*)",
+      "Shell(rm -rf /dev/)",
+      "Shell(rm -rf /proc/)",
+      "Shell(rm -rf /sys/)",
+      "Shell(rm -rf /tmp/)",
+      "Shell(rm -rf /var/)",
+      "Shell(rm -rf /mnt/)",
+      "Shell(rm -rf /media/)",
+      "Shell(rm -rf /run/)",
+      "Shell(rm -rf /snap/)",
+      "Shell(rm -rf /srv/)",
+      "Shell(chmod 777 /*)",
+      "Shell(chmod -R 777*)",
+      "Shell(chmod -R 000*)",
+      "Shell(chown -R root:root /*)",
+      "Shell(chown -R nobody:nobody /*)",
+      "Shell(mv /* /*)",
+      "Shell(cp /dev/urandom /dev/*)",
+      "Shell(cat /dev/urandom > /dev/*)",
+      "Shell(cat /dev/zero > /dev/*)",
+      "Shell(fdisk*)",
+      "Shell(parted*)",
+      "Shell(cfdisk*)",
+      "Shell(gdisk*)",
+      "Shell(sgdisk*)",
+      "Shell(mkswap*)",
+      "Shell(swapon /dev/*)",
+      "Shell(swapoff -a)",
+      "Shell(mount /dev/* /*)",
+      "Shell(umount -f)",
+      "Shell(umount -l)",
+      "Shell(mount -o remount)",
+      "Shell(kill -9 -1)",
+      "Shell(killall -9)",
+      "Shell(pkill -f)",
+      "Shell(pkill -9)",
+      "Shell(killall -KILL)",
+      "Shell(init 0)",
+      "Shell(init 6)",
+      "Shell(shutdown)",
+      "Shell(reboot)",
+      "Shell(halt)",
+      "Shell(poweroff)",
+      "Shell(systemctl stop)",
+      "Shell(systemctl disable)",
+      "Shell(systemctl mask)",
+      "Shell(systemctl isolate)",
+      "Shell(service * stop)",
+      "Shell(wget * | sh)",
+      "Shell(curl * | sh)",
+      "Shell(curl * | bash)",
+      "Shell(curl * | zsh)",
+      "Shell(bash <(curl)",
+      "Shell(sh <(curl)",
+      "Shell(zsh <(curl)",
+      "Shell(eval $(curl)",
+      "Shell(python -c \"exec)",
+      "Shell(python3 -c \"exec)",
+      "Shell(perl -e)",
+      "Shell(ruby -e)",
+      "Shell(node -e)",
+      "Shell(echo * | base64 -d | sh)",
+      "Shell(echo * | base64 -d | bash)",
+      "Shell(nc -l)",
+      "Shell(netcat -l)",
+      "Shell(socat)",
+      "Shell(telnet)",
+      "Shell(ssh-keygen)",
+      "Shell(openssl genrsa)",
+      "Shell(openssl req)",
+      "Shell(gpg --gen-key)",
+      "Shell(iptables -F)",
+      "Shell(iptables -X)",
+      "Shell(iptables -P)",
+      "Shell(ip6tables -F)",
+      "Shell(ufw --force reset)",
+      "Shell(ufw disable)",
+      "Shell(shred)",
+      "Shell(wipe)",
+      "Shell(srm)",
+      "Shell(secure-delete)",
+      "Shell(find /* -delete)",
+      "Shell(find /* -exec rm)",
+      "Shell(find /* -type f -delete)",
+      "Shell(xargs rm)",
+      "Shell(yes | )",
+      "Shell(while true; do)",
+      "Shell(while :; do)",
+      "Shell(for i in {1..999999})",
+      "Shell(git push -f)",
+      "Shell(git push --force)",
+      "Shell(git push --force-with-lease)",
+      "Shell(git commit --amend)",
+      "Shell(git commit --amend --no-edit)",
+      "Shell(git commit --amend --no-verify)",
+      "Shell(git commit --no-verify)",
+      "Shell(git commit --no-verify -m)",
+      "Shell(git commit --no-verify -m -)",
+      "Shell(git commit --no-verify -m - -)",
+      "Shell(git commit --no-verify -m - - -)",
+      "Shell(git commit --no-verify -m - - - -)"
+    ]
+  },
+  "data_collection_enabled": false,
+  "privacy": {
+    "usageStatisticsEnabled": false
+  },
+  "security": {
+    "folderTrust": {
+      "featureEnabled": true
+    },
+    "auth": {
+      "selectedType": "oauth-personal"
+    }
+  },
+  "ui": {
+    "showLineNumbers": true,
+    "hideTips": true,
+    "hideBanner": true,
+    "showCitations": true,
+    "showMemoryUsage": true
+  },
+  "general": {
+    "enablePromptCompletion": true,
+    "previewFeatures": true
   }
 }
