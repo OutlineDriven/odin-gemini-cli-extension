@@ -196,6 +196,7 @@
   },
   "general": {
     "enablePromptCompletion": true,
-    "previewFeatures": true
+    "previewFeatures": true,
+    "useModelRouter": false
   }
 }
