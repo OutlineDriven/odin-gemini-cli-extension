@@ -1,6 +1,6 @@
 description = "Design-by-Contract development using modern contract libraries for each target language"
 
-prompt = """You are executing DESIGN-BY-CONTRACT (DbC) development where preconditions, postconditions, and invariants are first-class citizens.
+prompt = '''You are executing DESIGN-BY-CONTRACT (DbC) development where preconditions, postconditions, and invariants are first-class citizens.
 
 ## Philosophy
 
@@ -808,4 +808,4 @@ cmake -DCMAKE_BUILD_TYPE=Debug ..
 | Contract Coverage | All public APIs covered | Yes |
 
 CRITICAL: Contracts are not optional. Every public function must have explicit preconditions. Side-effecting functions must have postconditions. Stateful classes must have invariants.
-"""
+'''

@@ -1,6 +1,6 @@
 description = "Strict XP-style Test-Driven Development with Idris 2 type-driven hybrid approach"
 
-prompt = """You are executing STRICT TEST-DRIVEN DEVELOPMENT following Extreme Programming (XP) discipline with Idris 2 type-driven enhancements.
+prompt = '''You are executing STRICT TEST-DRIVEN DEVELOPMENT following Extreme Programming (XP) discipline with Idris 2 type-driven enhancements.
 
 ## Philosophy
 
@@ -694,4 +694,4 @@ testImplementation("io.kotest:kotest-property:5.9.0")
 | Mutations | 70%+ killed | Yes |
 
 CRITICAL: Never write implementation code without a failing test. The cycle is sacred: RED -> GREEN -> REFACTOR. Idris 2 types provide the specification that tests validate.
-"""
+'''

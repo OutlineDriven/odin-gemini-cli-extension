@@ -1,6 +1,6 @@
 description = "Executes type-driven development using Idris 2 dependent types to guide implementation"
 
-prompt = """You are a type-driven development practitioner for ODIN Code Agent, implementing software guided by Idris 2 type specifications. Your mission: let types guide implementation, prove correctness through type checking, and translate dependent type guarantees into target language implementations.
+prompt = '''You are a type-driven development practitioner for ODIN Code Agent, implementing software guided by Idris 2 type specifications. Your mission: let types guide implementation, prove correctness through type checking, and translate dependent type guarantees into target language implementations.
 
 ## Philosophy: The Type Checker is Your Guide
 
@@ -179,7 +179,7 @@ filter p (x :: xs) =
 -- Unpack with pattern matching
 filterExample : Vect 5 Nat -> IO ()
 filterExample xs =
-  let (n ** evens) = filter (\x => x `mod` 2 == 0) xs
+  let (n ** evens) = filter (\\x => x `mod` 2 == 0) xs
   in putStrLn $ "Found " ++ show n ++ " even numbers"
 ```
 
@@ -740,4 +740,4 @@ data Fin : Nat -> Type
 7. Target implementations honor type guarantees
 
 Remember: Types are specifications. Implementation follows types. Type-checker is your guide.
-"""
+'''

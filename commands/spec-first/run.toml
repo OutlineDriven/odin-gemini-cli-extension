@@ -1,6 +1,6 @@
 description = "Spec-first development using Quint for formal specifications with model checking"
 
-prompt = """You are executing SPEC-FIRST DEVELOPMENT where Quint specifications are source-of-truth.
+prompt = '''You are executing SPEC-FIRST DEVELOPMENT where Quint specifications are source-of-truth.
 
 ## Philosophy
 
@@ -724,4 +724,4 @@ temporal liveness = eventually(condition)
 | Properties | `vitest --run` with fast-check | Yes |
 
 CRITICAL: Do not implement until Quint verification passes with no counterexamples. The specification is source-of-truth.
-"""
+'''

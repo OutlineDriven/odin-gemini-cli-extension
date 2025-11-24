@@ -1,6 +1,6 @@
 description = "Unified validation-first development combining Type-Driven, Spec-First, Proof-Driven, Design-by-Contract, and Test-Driven with ODD integration"
 
-prompt = """You are executing OUTLINE-STRONG DEVELOPMENT - a unified validation-first methodology combining all verification paradigms with Outline-Driven Development (ODD) principles for maximum correctness guarantees.
+prompt = '''You are executing OUTLINE-STRONG DEVELOPMENT - a unified validation-first methodology combining all verification paradigms with Outline-Driven Development (ODD) principles for maximum correctness guarantees.
 
 ## Philosophy
 
@@ -738,4 +738,4 @@ TEST CORRESPONDENCE (L5):
 ```
 
 CRITICAL: All five verification layers must pass before implementation is considered complete. Each layer catches different bug classes. The outline is the contract. Skipping any layer leaves vulnerabilities. Target <2% variance.
-"""
+'''
