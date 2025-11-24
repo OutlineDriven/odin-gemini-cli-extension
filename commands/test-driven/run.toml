@@ -1,3 +1,311 @@
-description = ""
-prompt="""
+description = "Strict XP-style Test-Driven Development with type-driven hybrid approach"
+
+prompt = """You are executing STRICT TEST-DRIVEN DEVELOPMENT following Extreme Programming (XP) discipline with type-driven enhancements.
+
+## Philosophy
+
+Never write production code without a failing test. Tests drive design. The Red-Green-Refactor cycle is sacred. Types complement tests by encoding contracts that the compiler enforces.
+
+## Constitutional Rules (NON-NEGOTIABLE)
+
+1. **TEST-FIRST ABSOLUTE**: No implementation code before tests exist
+2. **SPECIFICATION ISOLATION**: Generate tests from REQUIREMENTS ONLY, never from code inspection
+3. **ONE CYCLE = ONE TEST**: RED → GREEN → REFACTOR per test (30-120 seconds)
+4. **ASSERTION DISCIPLINE**: One clear assertion per test
+5. **ERROR PATHS FIRST**: Test error cases before happy paths
+6. **REFACTOR-ONLY-ON-GREEN**: Refactoring allowed ONLY when all tests pass
+7. **COVERAGE GATES**: Target 80%+ on critical paths
+
+## Workflow
+
+### PHASE 1: TYPE DESIGN (Specification Layer)
+
+1. **Read Requirements Only**
+   - Extract core behaviors and constraints
+   - Identify data types and operations
+   - DO NOT look at any existing code
+
+2. **Define Type Signatures**
+   ```typescript
+   // Type signature expresses contract
+   type ValidationError =
+     | { kind: 'empty_input' }
+     | { kind: 'invalid_format'; details: string };
+
+   // Result type encodes success/failure
+   type Result<T, E> =
+     | { ok: true; value: T }
+     | { ok: false; error: E };
+
+   // Function signature IS the specification
+   function parseEmail(input: string): Result<Email, ValidationError>;
+   ```
+
+3. **VALIDATION GATE: Types Compile**
+   ```bash
+   npx tsc --noEmit
+   ```
+
+### PHASE 2: PROPERTY-BASED TESTS
+
+1. **Generate Tests from Type Signatures**
+   ```python
+   from hypothesis import given, strategies as st
+
+   # Property: Parser always returns Result
+   @given(st.text())
+   def test_parse_email_returns_result(input_str):
+       result = parse_email(input_str)
+       assert isinstance(result, Result)
+
+   # Property: Valid emails never fail
+   @given(valid_email_strategy())
+   def test_valid_emails_succeed(email):
+       result = parse_email(email)
+       assert result.ok is True
+
+   # Property: Invalid inputs fail with reason
+   @given(invalid_email_strategy())
+   def test_invalid_emails_fail_with_error(email):
+       result = parse_email(email)
+       assert result.ok is False
+       assert result.error is not None
+   ```
+
+2. **VALIDATION GATE: Property Tests Defined**
+   - Tests should FAIL (no implementation yet)
+   - Verify failure messages are meaningful
+
+### PHASE 3: UNIT TESTS (RED State)
+
+1. **Write Error Case Tests FIRST**
+   ```python
+   # AAA Pattern: Arrange, Act, Assert
+
+   def test_parse_email_rejects_empty_input():
+       # Arrange
+       input_email = ""
+       # Act
+       result = parse_email(input_email)
+       # Assert
+       assert result.ok is False
+       assert result.error.kind == 'empty_input'
+
+   def test_parse_email_rejects_no_at_symbol():
+       # Arrange
+       input_email = "userexample.com"
+       # Act
+       result = parse_email(input_email)
+       # Assert
+       assert result.ok is False
+       assert result.error.kind == 'invalid_format'
+
+   def test_parse_email_rejects_multiple_at_symbols():
+       input_email = "user@@example.com"
+       result = parse_email(input_email)
+       assert result.ok is False
+   ```
+
+2. **Write Happy Path Tests**
+   ```python
+   def test_parse_email_accepts_valid_simple():
+       input_email = "user@example.com"
+       result = parse_email(input_email)
+       assert result.ok is True
+       assert result.value.address == input_email
+
+   def test_parse_email_accepts_subdomain():
+       input_email = "user@mail.example.co.uk"
+       result = parse_email(input_email)
+       assert result.ok is True
+   ```
+
+3. **Write Edge Case Tests**
+   ```python
+   def test_parse_email_handles_max_length():
+       # RFC 5321: max 254 characters
+       long_local = "a" * 64
+       long_domain = "b" * 185 + ".com"
+       input_email = f"{long_local}@{long_domain}"
+       result = parse_email(input_email)
+       # Verify appropriate handling
+
+   def test_parse_email_handles_unicode():
+       input_email = "user@example.com"  # or test unicode support
+       result = parse_email(input_email)
+       # Verify expected behavior
+   ```
+
+4. **VALIDATION GATE: All Tests RED**
+   ```bash
+   pytest tests/ --tb=short
+   # Expected: ALL TESTS FAIL
+   ```
+   - MUST FAIL before implementation
+   - Verify failure is due to missing implementation, not test bugs
+
+### PHASE 4: IMPLEMENTATION (GREEN State)
+
+1. **Implement MINIMUM Code to Pass ONE Test**
+   ```python
+   def parse_email(input_str: str) -> Result[Email, ValidationError]:
+       # Minimum to pass test_parse_email_rejects_empty_input
+       if not input_str:
+           return Result.error(ValidationError(kind='empty_input'))
+       # ... more implementation as tests require
+   ```
+
+2. **Red-Green Cycle (30-120 seconds per test)**
+   ```
+   For each failing test:
+     1. Run tests → Confirm RED (this test fails)
+     2. Write MINIMUM code to pass THIS test
+     3. Run tests → Confirm GREEN (this test passes)
+     4. Commit? (optional micro-commit)
+     5. Next test
+   ```
+
+3. **VALIDATION GATE: All Tests GREEN**
+   ```bash
+   pytest tests/ -v
+   # Expected: ALL TESTS PASS
+   ```
+
+### PHASE 5: REFACTOR (Maintain GREEN)
+
+1. **Refactor Rules**
+   - Run tests BEFORE any refactoring → must be GREEN
+   - Make ONE change at a time
+   - Run tests AFTER each change → must stay GREEN
+   - If tests fail, REVERT immediately
+
+2. **Refactoring Opportunities**
+   - Extract methods for clarity
+   - Remove duplication
+   - Improve naming
+   - Simplify conditionals
+   - DO NOT add features
+
+3. **VALIDATION GATE: Tests Still GREEN**
+   ```bash
+   pytest tests/ -v
+   # Expected: ALL TESTS STILL PASS
+   ```
+
+### PHASE 6: COVERAGE VALIDATION
+
+1. **Measure Coverage**
+   ```bash
+   pytest --cov=src --cov-report=term-missing tests/
+   ```
+
+2. **Coverage Requirements**
+   - Critical paths: 80%+ statement coverage
+   - Error handlers: 100% coverage
+   - Public API: 100% coverage
+
+3. **VALIDATION GATE: Coverage Met**
+   ```bash
+   pytest --cov=src --cov-fail-under=80 tests/
+   # Expected: Coverage >= 80%
+   ```
+
+### PHASE 7: PROPERTY TEST EXECUTION
+
+1. **Run Full Property Suite**
+   ```bash
+   pytest --hypothesis-show-statistics tests/
+   ```
+   - Hypothesis generates 100+ test cases
+   - Shrinking finds minimal counterexamples
+
+2. **FINAL VALIDATION**
+   ```bash
+   # All unit tests pass
+   pytest tests/ -v
+
+   # Property tests pass
+   pytest --hypothesis-show-statistics tests/
+
+   # Coverage met
+   pytest --cov=src --cov-fail-under=80 tests/
+
+   # Types check
+   npx tsc --noEmit  # or pyright/mypy
+   ```
+
+## TDD Anti-Patterns to Avoid
+
+| Anti-Pattern | Description | Prevention |
+|--------------|-------------|------------|
+| **Test Pollution** | Tests depend on each other | Isolate test state |
+| **Mock Abuse** | Over-mocking hides bugs | Prefer real dependencies |
+| **Assertion Creep** | One test verifies 5+ things | Split into separate tests |
+| **Skip-to-Green** | Writing tests after code | Strict RED-first discipline |
+| **Coverage Theater** | Tests pass but don't verify | Meaningful assertions |
+| **Refactor-on-Red** | Cleaning up with failing tests | Only refactor on GREEN |
+
+## Quick Reference
+
+**Test Frameworks:**
+```bash
+# Python
+pip install pytest pytest-cov hypothesis
+pytest tests/ -v --cov=src
+
+# TypeScript
+npm install -D vitest @vitest/coverage-v8
+npx vitest run --coverage
+
+# Rust
+cargo test
+cargo tarpaulin --out Html
+
+# Go
+go test -v -cover ./...
+```
+
+**Property-Based Testing:**
+```python
+# Python (Hypothesis)
+from hypothesis import given, strategies as st
+
+@given(st.integers(), st.integers())
+def test_addition_commutative(a, b):
+    assert a + b == b + a
+```
+
+```typescript
+// TypeScript (fast-check)
+import fc from 'fast-check';
+
+test('addition is commutative', () => {
+  fc.assert(fc.property(fc.integer(), fc.integer(), (a, b) => {
+    return a + b === b + a;
+  }));
+});
+```
+
+## Required Output
+
+Provide:
+1. Type signatures (contracts)
+2. Property-based tests
+3. Unit tests (error cases first, then happy paths)
+4. Implementation passing all tests
+5. Coverage report showing 80%+
+6. Refactoring summary (what was improved)
+
+## Validation Gates Summary
+
+| Gate | Command | Must Pass |
+|------|---------|-----------|
+| Types | `tsc --noEmit / pyright` | Yes |
+| Tests RED | `pytest` (all fail) | Yes (before impl) |
+| Tests GREEN | `pytest` (all pass) | Yes (after impl) |
+| Refactor GREEN | `pytest` (still pass) | Yes |
+| Coverage | `pytest --cov-fail-under=80` | Yes |
+| Properties | `pytest --hypothesis` | Yes |
+
+CRITICAL: Never write implementation code without a failing test. The cycle is sacred: RED → GREEN → REFACTOR.
 """

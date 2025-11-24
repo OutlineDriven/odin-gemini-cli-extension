@@ -1,3 +1,208 @@
-description = ""
-prompt="""
+description = "Type-driven development using Idris 2 as source-of-truth for verified implementations"
+
+prompt = """You are executing TYPE-DRIVEN DEVELOPMENT where Idris 2 dependent types serve as the source-of-truth specification.
+
+## Philosophy
+
+Types are executable specifications. Idris 2's dependent types encode invariants that the compiler enforces at compile-time. The type signature IS the specification - implementation must honor it.
+
+## Workflow
+
+### PHASE 1: TYPE SPECIFICATION (Idris 2)
+
+1. **Analyze Requirements**
+   - Extract core data types and operations from requirements
+   - Identify invariants that must hold (length constraints, non-null, ranges, etc.)
+   - Map requirements to dependent type patterns
+
+2. **Write Idris 2 Type Signatures**
+   ```idris
+   -- Example: Length-indexed vector append
+   app : Vect n a -> Vect m a -> Vect (n + m) a
+
+   -- Example: Refined type for positive integers
+   data Positive : Nat -> Type where
+     MkPositive : (n : Nat) -> Not (n = 0) -> Positive n
+
+   -- Example: State machine with type-safe transitions
+   data State = Init | Running | Stopped
+   transition : (s : State) -> ValidTransition s -> State
+   ```
+
+3. **Create Specification File**
+   - Write `Spec.idr` with all type signatures
+   - Use holes (`?hole`) for implementation placeholders
+   - Document invariants in comments
+
+4. **VALIDATION GATE: Type Check**
+   ```bash
+   idris2 --check Spec.idr
+   ```
+   - MUST PASS before proceeding
+   - Type errors indicate specification issues
+
+### PHASE 2: TYPE-GUIDED IMPLEMENTATION (Idris 2)
+
+1. **Interactive Development**
+   ```bash
+   idris2 --repl Spec.idr
+   ```
+   - Use `:t` to inspect types
+   - Use `:cs` for case splits
+   - Use `:ps` for proof search
+   - Use `:gd` for definition generation
+
+2. **Implement Functions**
+   - Let the type checker guide you
+   - Compiler will reject incorrect implementations
+   - All pattern matches must be exhaustive
+
+3. **VALIDATION GATE: Complete Implementation**
+   ```bash
+   idris2 --check Spec.idr  # No holes remaining
+   idris2 -o spec Spec.idr  # Compiles successfully
+   ```
+
+### PHASE 3: CODE GENERATION (Target Language)
+
+1. **Select Backend**
+   ```bash
+   # Chez Scheme (default, fast)
+   idris2 --codegen chez Spec.idr -o spec
+
+   # JavaScript (web/Node.js)
+   idris2 --codegen javascript Spec.idr -o spec.js
+
+   # C (native integration)
+   idris2 --codegen refc Spec.idr -o spec
+   ```
+
+2. **Extract Type Contracts for Target Language**
+   - Translate Idris 2 types to target language equivalents
+   - Document type contracts in target language (JSDoc, TypeScript types, etc.)
+   - Preserve invariants through assertions or contract libraries
+
+### PHASE 4: TARGET LANGUAGE IMPLEMENTATION
+
+1. **Implement in Target Language**
+   - Honor the verified type contracts from Idris 2
+   - Use language-appropriate type annotations
+   - Add runtime assertions for invariants that can't be expressed in target type system
+
+2. **Type Contract Examples by Language**
+
+   **TypeScript:**
+   ```typescript
+   // From Idris: app : Vect n a -> Vect m a -> Vect (n + m) a
+   function append<T>(xs: readonly T[], ys: readonly T[]): T[] {
+     // Postcondition: result.length === xs.length + ys.length
+     const result = [...xs, ...ys];
+     console.assert(result.length === xs.length + ys.length);
+     return result;
+   }
+   ```
+
+   **Rust:**
+   ```rust
+   // From Idris: positive integer constraint
+   #[derive(Debug)]
+   struct Positive(NonZeroU64);
+
+   impl Positive {
+       fn new(n: u64) -> Option<Self> {
+           NonZeroU64::new(n).map(Positive)
+       }
+   }
+   ```
+
+   **Python:**
+   ```python
+   from deal import pre, post, ensure
+
+   # From Idris: app : Vect n a -> Vect m a -> Vect (n + m) a
+   @post(lambda xs, ys, result: len(result) == len(xs) + len(ys))
+   def append(xs: list, ys: list) -> list:
+       return xs + ys
+   ```
+
+3. **VALIDATION GATE: Target Type Check**
+   ```bash
+   # TypeScript
+   npx tsc --noEmit
+
+   # Rust
+   cargo check
+
+   # Python
+   pyright src/
+   ```
+
+### PHASE 5: VERIFICATION
+
+1. **Property-Based Testing**
+   - Generate tests from Idris 2 type signatures
+   - Test that target implementation honors type contracts
+
+   ```python
+   from hypothesis import given, strategies as st
+
+   @given(st.lists(st.integers()), st.lists(st.integers()))
+   def test_append_length_property(xs, ys):
+       result = append(xs, ys)
+       assert len(result) == len(xs) + len(ys)
+   ```
+
+2. **FINAL VALIDATION**
+   ```bash
+   # Run property tests
+   pytest --hypothesis-show-statistics
+
+   # Verify Idris spec still compiles
+   idris2 --check Spec.idr
+   ```
+
+## Idris 2 Quick Reference
+
+**Common Dependent Types:**
+- `Vect n a` - Vector of exactly n elements
+- `Fin n` - Natural number less than n
+- `Dec p` - Decidable proposition (Yes/No with proof)
+- `So b` - Proof that boolean b is True
+
+**Useful Commands:**
+```bash
+idris2 --check file.idr     # Type check only
+idris2 --repl file.idr      # Interactive mode
+idris2 -o out file.idr      # Compile
+idris2 --codegen chez       # Use Chez Scheme backend
+idris2 --codegen javascript # Use JS backend
+```
+
+**REPL Commands:**
+- `:t expr` - Show type
+- `:cs n f` - Case split on f at line n
+- `:ps n f` - Proof search for f at line n
+- `:gd n f` - Generate definition for f at line n
+- `:doc name` - Show documentation
+
+## Required Output
+
+Provide:
+1. Idris 2 specification file (`Spec.idr`) with type signatures
+2. Verification that types compile: `idris2 --check` output
+3. Target language implementation honoring type contracts
+4. Property-based tests verifying invariants
+5. Summary of type-to-implementation mapping
+
+## Validation Gates Summary
+
+| Gate | Command | Must Pass |
+|------|---------|-----------|
+| Type Spec | `idris2 --check Spec.idr` | Yes |
+| No Holes | `idris2 --check` (no ?holes) | Yes |
+| Compile | `idris2 -o spec Spec.idr` | Yes |
+| Target Types | `tsc/cargo check/pyright` | Yes |
+| Properties | `pytest --hypothesis` | Yes |
+
+CRITICAL: Do not proceed to implementation until type specification passes validation.
 """

@@ -1,0 +1,422 @@
+description = "Unified validation-first development combining Type-Driven, Spec-First, Proof-Driven, Design-by-Contract, and Test-Driven approaches"
+
+prompt = """You are executing OUTLINE-STRONG DEVELOPMENT - a unified validation-first methodology combining all verification paradigms for maximum correctness guarantees.
+
+## Philosophy
+
+Multiple verification layers catch different classes of bugs. Types catch structural errors. Specs catch design flaws. Proofs guarantee invariants. Contracts enforce runtime boundaries. Tests validate behavior. Together, they form an impenetrable defense against defects.
+
+## Verification Stack
+
+```
++------------------+--------------------+-------------------------+
+|     LAYER        |       TOOL         |    CATCHES              |
++------------------+--------------------+-------------------------+
+| 1. TYPES         | Idris 2            | Structural errors       |
+| 2. SPECS         | Alloy 6 / TLA+     | Design flaws            |
+| 3. PROOFS        | Lean 4             | Invariant violations    |
+| 4. CONTRACTS     | deal/contracts/GSL | Runtime violations      |
+| 5. TESTS         | pytest/Hypothesis  | Behavioral bugs         |
++------------------+--------------------+-------------------------+
+```
+
+## Complete Workflow
+
+### PHASE 1: SPECIFICATION (Type-Driven + Spec-First)
+
+**1.1 Define Types in Idris 2**
+
+```idris
+-- Spec.idr: Type-level specification
+
+-- Refined type for positive amounts
+data Positive : Nat -> Type where
+  MkPositive : (n : Nat) -> Not (n = 0) -> Positive n
+
+-- Account with balance invariant
+record Account where
+  constructor MkAccount
+  balance : Nat
+  status : AccountStatus
+
+-- Operation type signature encodes constraints
+withdraw : (acc : Account) ->
+           (amount : Positive n) ->
+           (prf : LTE n (balance acc)) ->
+           Account
+```
+
+**1.2 Write Structural Spec in Alloy 6**
+
+```alloy
+-- model.als: Structural specification
+
+sig Account {
+  balance: one Int,
+  status: one Status
+}
+
+sig Status {}
+one sig Active, Frozen extends Status {}
+
+-- Invariant: balance never negative
+fact BalanceNonNegative {
+  all a: Account | a.balance >= 0
+}
+
+-- Operation specification
+pred withdraw[a, a': Account, amount: Int] {
+  -- Preconditions
+  amount > 0
+  amount <= a.balance
+  a.status = Active
+  -- Postconditions
+  a'.balance = a.balance.minus[amount]
+  a'.status = a.status
+}
+
+-- Check invariant preserved
+assert WithdrawPreservesInvariant {
+  all a, a': Account, amt: Int |
+    withdraw[a, a', amt] implies a'.balance >= 0
+}
+
+check WithdrawPreservesInvariant for 10
+```
+
+**1.3 VALIDATION GATE: Specs Pass**
+
+```bash
+# Idris 2 types compile
+idris2 --check Spec.idr
+
+# Alloy assertions hold
+alloy6-cli check model.als
+```
+
+---
+
+### PHASE 2: VERIFICATION (Proof-Driven)
+
+**2.1 Model Critical Components in Lean 4**
+
+```lean
+-- Verified.lean: Formal proofs
+
+namespace Account
+
+structure Account where
+  balance : Nat
+  status : AccountStatus
+  balanceInvariant : balance >= 0 := by decide
+
+-- Theorem: withdraw preserves invariant
+theorem withdraw_preserves_invariant
+  (acc : Account)
+  (amount : Nat)
+  (h_pos : amount > 0)
+  (h_sufficient : amount <= acc.balance) :
+  (acc.balance - amount) >= 0 := by
+    omega
+
+-- Theorem: withdraw result is correct
+theorem withdraw_correct
+  (acc : Account)
+  (amount : Nat)
+  (h_sufficient : amount <= acc.balance) :
+  let newBalance := acc.balance - amount
+  newBalance + amount = acc.balance := by
+    simp [Nat.sub_add_cancel h_sufficient]
+
+end Account
+```
+
+**2.2 VALIDATION GATE: Proofs Complete**
+
+```bash
+# All proofs complete (no sorry)
+lake build
+```
+
+---
+
+### PHASE 3: CONTRACTS (Design-by-Contract)
+
+**3.1 Translate to Target Language with Contracts**
+
+```python
+# account.py: Implementation with contracts
+
+import deal
+
+@deal.inv(lambda self: self.balance >= 0)
+class Account:
+    def __init__(self, initial_balance: int):
+        deal.pre(lambda: initial_balance >= 0)
+        self.balance = initial_balance
+        self.status = "ACTIVE"
+
+    @deal.pre(lambda self, amount: amount > 0, message="Amount must be positive")
+    @deal.pre(lambda self, amount: amount <= self.balance, message="Insufficient funds")
+    @deal.pre(lambda self: self.status == "ACTIVE", message="Account must be active")
+    @deal.post(lambda result: result > 0)
+    @deal.ensure(lambda self, amount, result: self.balance == deal.old(self.balance) - amount)
+    def withdraw(self, amount: int) -> int:
+        """
+        Withdraw amount from account.
+
+        Verified Properties (Lean 4):
+        - withdraw_preserves_invariant: balance stays non-negative
+        - withdraw_correct: balance decreases by exactly amount
+
+        Type Contract (Idris 2):
+        - withdraw : Account -> Positive n -> LTE n balance -> Account
+        """
+        self.balance -= amount
+        return amount
+```
+
+**3.2 Document Verification Correspondence**
+
+```python
+"""
+VERIFICATION CORRESPONDENCE:
+
+| Contract | Idris 2 Type | Lean 4 Proof | Alloy Fact |
+|----------|--------------|--------------|------------|
+| amount > 0 | Positive n | h_pos | amount > 0 |
+| amount <= balance | LTE n balance | h_sufficient | amount <= a.balance |
+| balance >= 0 (post) | Nat (non-neg) | withdraw_preserves | BalanceNonNegative |
+"""
+```
+
+**3.3 VALIDATION GATE: Contracts Compile**
+
+```bash
+# Static analysis
+deal lint src/
+
+# Type checking
+pyright src/
+```
+
+---
+
+### PHASE 4: TESTS (Test-Driven XP)
+
+**4.1 Property-Based Tests from Types**
+
+```python
+# test_account.py
+
+from hypothesis import given, strategies as st, assume
+
+@given(st.integers(min_value=0, max_value=1000000))
+def test_account_invariant_on_creation(balance):
+    """Property: Account balance always non-negative after creation."""
+    account = Account(balance)
+    assert account.balance >= 0
+
+@given(
+    st.integers(min_value=100, max_value=1000),
+    st.integers(min_value=1, max_value=100)
+)
+def test_withdraw_preserves_invariant(initial, amount):
+    """Property: withdraw preserves balance >= 0 (Lean: withdraw_preserves_invariant)."""
+    assume(amount <= initial)
+    account = Account(initial)
+    account.withdraw(amount)
+    assert account.balance >= 0
+
+@given(
+    st.integers(min_value=100, max_value=1000),
+    st.integers(min_value=1, max_value=100)
+)
+def test_withdraw_correct(initial, amount):
+    """Property: balance decreases by exactly amount (Lean: withdraw_correct)."""
+    assume(amount <= initial)
+    account = Account(initial)
+    old_balance = account.balance
+    result = account.withdraw(amount)
+    assert account.balance == old_balance - amount
+    assert result == amount
+```
+
+**4.2 Unit Tests (RED-GREEN-REFACTOR)**
+
+```python
+import pytest
+from deal import PreContractError
+
+# Error cases FIRST
+def test_withdraw_negative_amount_fails():
+    account = Account(100)
+    with pytest.raises(PreContractError):
+        account.withdraw(-50)
+
+def test_withdraw_exceeds_balance_fails():
+    account = Account(100)
+    with pytest.raises(PreContractError):
+        account.withdraw(150)
+
+def test_withdraw_from_frozen_account_fails():
+    account = Account(100)
+    account.status = "FROZEN"
+    with pytest.raises(PreContractError):
+        account.withdraw(50)
+
+# Happy paths
+def test_withdraw_valid_amount():
+    account = Account(100)
+    result = account.withdraw(30)
+    assert result == 30
+    assert account.balance == 70
+```
+
+**4.3 VALIDATION GATE: All Tests Pass**
+
+```bash
+# Unit tests
+pytest tests/ -v
+
+# Property tests
+pytest --hypothesis-show-statistics tests/
+
+# Coverage
+pytest --cov=src --cov-fail-under=80 tests/
+```
+
+---
+
+### PHASE 5: INTEGRATION
+
+**5.1 Verification Alignment Check**
+
+| Verification Layer | Status | Command |
+|--------------------|--------|---------|
+| Idris 2 Types | PASS | `idris2 --check Spec.idr` |
+| Alloy 6 Specs | PASS | `alloy6-cli check model.als` |
+| Lean 4 Proofs | PASS | `lake build` (no sorry) |
+| Python Contracts | PASS | `deal lint src/` |
+| Property Tests | PASS | `pytest --hypothesis` |
+| Unit Tests | PASS | `pytest tests/` |
+| Coverage | 85% | `pytest --cov` |
+
+**5.2 Final Validation Script**
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== OUTLINE-STRONG VALIDATION ==="
+
+echo "[1/6] Type Specification (Idris 2)..."
+idris2 --check Spec.idr
+
+echo "[2/6] Structural Specification (Alloy 6)..."
+alloy6-cli check model.als
+
+echo "[3/6] Formal Proofs (Lean 4)..."
+cd proofs && lake build && cd ..
+
+echo "[4/6] Contract Analysis..."
+deal lint src/
+pyright src/
+
+echo "[5/6] Property-Based Tests..."
+pytest --hypothesis-show-statistics tests/
+
+echo "[6/6] Full Test Suite + Coverage..."
+pytest --cov=src --cov-fail-under=80 tests/
+
+echo "=== ALL VALIDATION GATES PASSED ==="
+```
+
+---
+
+## When to Use Each Layer
+
+| Scenario | Required Layers |
+|----------|-----------------|
+| Simple CRUD | Contracts + Tests |
+| Business logic | Types + Contracts + Tests |
+| Concurrent system | Specs (TLA+) + Proofs + Tests |
+| Safety-critical | ALL FIVE LAYERS |
+| Financial/Legal | Types + Specs + Proofs + Contracts + Tests |
+
+## Quick Reference
+
+**Idris 2:**
+```bash
+idris2 --check Spec.idr
+idris2 --codegen chez Spec.idr -o spec
+```
+
+**Alloy 6:**
+```bash
+alloy6-cli check model.als
+alloy6-cli run model.als
+```
+
+**Lean 4:**
+```bash
+lake build
+lean --run Main.lean
+```
+
+**Contracts (Python):**
+```bash
+pip install deal
+deal lint src/
+```
+
+**Tests:**
+```bash
+pytest --hypothesis-show-statistics --cov=src tests/
+```
+
+## Required Output
+
+Provide:
+1. **Idris 2 Specification** - Type signatures with dependent types
+2. **Alloy 6 Model** - Structural specification with assertions
+3. **Lean 4 Proofs** - Theorems with complete proofs (no sorry)
+4. **Implementation** - Target language code with contracts
+5. **Property Tests** - Generated from type signatures
+6. **Unit Tests** - RED-GREEN-REFACTOR cycle
+7. **Validation Report** - All gates passed
+
+## Validation Gates Summary
+
+| Gate | Tool | Command | Must Pass |
+|------|------|---------|-----------|
+| Types | Idris 2 | `idris2 --check` | Yes |
+| Specs | Alloy 6 | `alloy6-cli check` | Yes |
+| Proofs | Lean 4 | `lake build` | Yes |
+| Contracts | deal/pyright | `deal lint` | Yes |
+| Properties | Hypothesis | `pytest --hypothesis` | Yes |
+| Unit Tests | pytest | `pytest tests/` | Yes |
+| Coverage | pytest-cov | `--cov-fail-under=80` | Yes |
+
+## Verification Correspondence Template
+
+```
+FUNCTION: [function_name]
+
++------------------+----------------------+------------------------+
+| CONTRACT         | TYPE (Idris 2)       | PROOF (Lean 4)         |
++------------------+----------------------+------------------------+
+| @pre(x > 0)      | Positive x           | h_positive : x > 0     |
+| @pre(x <= y)     | LTE x y              | h_bound : x <= y       |
+| @post(r >= 0)    | Nat (return type)    | theorem_preserves_inv  |
+| @inv(balance>=0) | balance : Nat        | balanceInvariant       |
++------------------+----------------------+------------------------+
+
+ALLOY CORRESPONDENCE:
+- fact XxxInvariant <==> @inv(...)
+- pred xxx[...] <==> function signature
+- assert XxxProperty <==> theorem xxx
+```
+
+CRITICAL: All five verification layers must pass before implementation is considered complete. Each layer catches different bug classes. Skipping any layer leaves vulnerabilities.
+"""

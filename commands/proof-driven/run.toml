@@ -1,3 +1,281 @@
-description = ""
-prompt="""
+description = "Proof-driven development using Lean 4 for formal verification before implementation"
+
+prompt = """You are executing PROOF-DRIVEN DEVELOPMENT where Lean 4 proofs verify correctness before implementation.
+
+## Philosophy
+
+Prove properties before implementing. Lean 4's dependent type system and tactic-based proof construction provide machine-checkable correctness guarantees. The proof IS the validation - implementation must correspond to the verified model.
+
+## Workflow
+
+### PHASE 1: FORMAL MODELING (Lean 4)
+
+1. **Analyze Requirements**
+   - Identify critical properties (soundness, completeness, safety invariants)
+   - Determine what needs formal proof vs what can rely on testing
+   - Map requirements to Lean 4 structures
+
+2. **Create Lean 4 Project**
+   ```bash
+   lake new ProofSpec
+   cd ProofSpec
+   ```
+
+   Project structure:
+   ```
+   ProofSpec/
+   ├── Main.lean           # Entry point
+   ├── ProofSpec/
+   │   ├── Basic.lean      # Core definitions
+   │   ├── Properties.lean # Theorems to prove
+   │   └── Verified.lean   # Proven implementations
+   ├── lakefile.lean       # Build configuration
+   └── lean-toolchain      # Lean version
+   ```
+
+3. **Define Core Types and Operations**
+   ```lean
+   -- ProofSpec/Basic.lean
+   namespace ProofSpec
+
+   -- Example: Define a binary search tree
+   inductive BST (α : Type) [Ord α] where
+     | empty : BST α
+     | node : BST α → α → BST α → BST α
+
+   -- Define the BST property
+   def isBST : BST α → Bool := ...
+
+   -- Operations
+   def insert (t : BST α) (x : α) : BST α := ...
+   def member (t : BST α) (x : α) : Bool := ...
+
+   end ProofSpec
+   ```
+
+4. **VALIDATION GATE: Definitions Compile**
+   ```bash
+   lake build
+   ```
+
+### PHASE 2: PROPERTY SPECIFICATION
+
+1. **Specify Theorems to Prove**
+   ```lean
+   -- ProofSpec/Properties.lean
+   namespace ProofSpec.Properties
+
+   -- Theorem: insert preserves BST property
+   theorem insert_preserves_bst (t : BST α) (x : α) :
+     isBST t → isBST (insert t x) := by
+     sorry  -- Proof placeholder
+
+   -- Theorem: inserted element is a member
+   theorem insert_member (t : BST α) (x : α) :
+     member (insert t x) x = true := by
+     sorry
+
+   -- Theorem: insert is idempotent for membership
+   theorem insert_idempotent (t : BST α) (x : α) :
+     member (insert (insert t x) x) x = member (insert t x) x := by
+     sorry
+
+   end ProofSpec.Properties
+   ```
+
+2. **VALIDATION GATE: Theorems Type-Check**
+   ```bash
+   lake build  # Should compile with 'sorry' warnings
+   ```
+
+### PHASE 3: PROOF CONSTRUCTION
+
+1. **Prove Each Theorem Using Tactics**
+   ```lean
+   theorem insert_preserves_bst (t : BST α) (x : α) :
+     isBST t → isBST (insert t x) := by
+     intro h_bst
+     induction t with
+     | empty => simp [insert, isBST]
+     | node left val right ih_left ih_right =>
+       simp [insert]
+       split
+       · -- x < val case
+         constructor
+         · exact ih_left h_bst.left
+         · exact h_bst.right
+         · -- prove ordering preserved
+           sorry
+       · -- x >= val case
+         sorry
+   ```
+
+2. **Common Lean 4 Tactics**
+   - `intro` - Introduce hypotheses
+   - `apply` - Apply a lemma/theorem
+   - `exact` - Provide exact proof term
+   - `simp` - Simplification
+   - `rfl` - Reflexivity
+   - `induction` - Structural induction
+   - `cases` - Case analysis
+   - `constructor` - Build structure
+   - `have` - Introduce intermediate lemma
+   - `calc` - Calculational proofs
+
+3. **VALIDATION GATE: All Proofs Complete**
+   ```bash
+   lake build  # No 'sorry' remaining
+   ```
+   - MUST PASS: No `sorry` placeholders
+   - All theorems must have complete proofs
+
+### PHASE 4: VERIFIED IMPLEMENTATION EXTRACTION
+
+1. **Extract Executable Code**
+   ```lean
+   -- Lean 4 generates efficient code automatically
+   #eval ProofSpec.insert ProofSpec.BST.empty 5
+   ```
+
+2. **Create Executable**
+   ```bash
+   lake build
+   ./build/bin/ProofSpec
+   ```
+
+3. **Export to Target Language**
+   - Lean 4 compiles to efficient C code
+   - Use FFI for integration with other languages
+   - Or re-implement in target language following verified model
+
+### PHASE 5: TARGET LANGUAGE IMPLEMENTATION
+
+1. **Implement Corresponding Code in Target Language**
+   - Follow the verified Lean 4 model exactly
+   - Preserve all invariants
+   - Document correspondence to proofs
+
+   **Example (Rust):**
+   ```rust
+   // Corresponds to Lean: ProofSpec.BST
+   enum BST<T: Ord> {
+       Empty,
+       Node(Box<BST<T>>, T, Box<BST<T>>),
+   }
+
+   impl<T: Ord> BST<T> {
+       // Corresponds to Lean: ProofSpec.insert
+       // PROVEN: preserves BST property
+       fn insert(self, x: T) -> Self {
+           match self {
+               BST::Empty => BST::Node(Box::new(BST::Empty), x, Box::new(BST::Empty)),
+               BST::Node(left, val, right) => {
+                   if x < val {
+                       BST::Node(Box::new(left.insert(x)), val, right)
+                   } else {
+                       BST::Node(left, val, Box::new(right.insert(x)))
+                   }
+               }
+           }
+       }
+   }
+   ```
+
+2. **Document Proof Correspondence**
+   ```rust
+   /// BST insert operation
+   ///
+   /// # Verified Properties (Lean 4)
+   /// - `insert_preserves_bst`: Maintains BST ordering invariant
+   /// - `insert_member`: Inserted element is always findable
+   /// - `insert_idempotent`: Inserting twice is same as inserting once
+   fn insert(self, x: T) -> Self { ... }
+   ```
+
+### PHASE 6: DIFFERENTIAL TESTING
+
+1. **Property-Based Testing Against Model**
+   ```python
+   from hypothesis import given, strategies as st
+
+   @given(st.lists(st.integers()))
+   def test_insert_matches_lean_model(values):
+       # Build tree using implementation
+       tree = BST.empty()
+       for v in values:
+           tree = tree.insert(v)
+
+       # Verify BST property holds (as proven in Lean)
+       assert is_bst(tree)
+
+       # Verify all inserted elements are members (as proven in Lean)
+       for v in values:
+           assert tree.member(v)
+   ```
+
+2. **FINAL VALIDATION**
+   ```bash
+   # Lean proofs still valid
+   lake build
+
+   # Implementation passes property tests
+   cargo test
+   pytest --hypothesis-show-statistics
+   ```
+
+## Lean 4 Quick Reference
+
+**Project Commands:**
+```bash
+lake new ProjectName    # Create new project
+lake build              # Build project
+lake exe cache get      # Download pre-built dependencies
+lake update             # Update dependencies
+```
+
+**Common Syntax:**
+```lean
+-- Definitions
+def f (x : Nat) : Nat := x + 1
+def g : Nat → Nat := fun x => x + 1
+
+-- Theorems
+theorem name : P := by tactics
+lemma name : P := proof_term
+
+-- Tactics
+by intro h; exact h
+by simp [lemma1, lemma2]
+by induction n with ...
+```
+
+**Useful Mathlib Imports:**
+```lean
+import Mathlib.Data.List.Basic
+import Mathlib.Data.Nat.Basic
+import Mathlib.Tactic
+```
+
+## Required Output
+
+Provide:
+1. Lean 4 project with definitions (`Basic.lean`)
+2. Property specifications (`Properties.lean`)
+3. Complete proofs (no `sorry`)
+4. `lake build` output showing successful compilation
+5. Target language implementation with proof correspondence documented
+6. Property-based tests verifying implementation matches model
+
+## Validation Gates Summary
+
+| Gate | Command | Must Pass |
+|------|---------|-----------|
+| Definitions | `lake build` (Basic.lean) | Yes |
+| Theorems | `lake build` (with sorry) | Yes |
+| Proofs | `lake build` (no sorry) | Yes |
+| Executable | `lake build` (full) | Yes |
+| Target Impl | `cargo check/tsc` | Yes |
+| Diff Testing | `pytest --hypothesis` | Yes |
+
+CRITICAL: Do not implement in target language until Lean 4 proofs are complete.
 """

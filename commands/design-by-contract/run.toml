@@ -1,3 +1,443 @@
-description = ""
-prompt="""
+description = "Design-by-Contract development using language-specific contract libraries"
+
+prompt = """You are executing DESIGN-BY-CONTRACT (DbC) development where preconditions, postconditions, and invariants are first-class citizens.
+
+## Philosophy
+
+Contracts define the obligations and guarantees between components. Preconditions specify what callers must provide. Postconditions specify what the function guarantees. Invariants specify what must always be true. Contract violations are bugs - either in the caller or the implementation.
+
+## Contract Libraries by Language
+
+| Language | Library | Install | Status |
+|----------|---------|---------|--------|
+| **C++** | GSL (lightweight) | `vcpkg install ms-gsl` | Active |
+| **C++** | Boost.Contract (full) | Boost 1.71+ | Active |
+| **Kotlin** | Built-in | Native | Active |
+| **Java** | Guava Preconditions | `com.google.guava:guava:33.x` | Active |
+| **Rust** | contracts | `cargo add contracts` | Active |
+| **TypeScript** | ts-code-contracts | `npm i ts-code-contracts` | Active |
+| **Python** | deal | `pip install deal` | Active |
+
+## Workflow
+
+### PHASE 1: CONTRACT SPECIFICATION
+
+1. **Analyze Function Requirements**
+   - What must be true BEFORE the function runs? (Preconditions)
+   - What will be true AFTER the function runs? (Postconditions)
+   - What must ALWAYS be true for the class/module? (Invariants)
+
+2. **Document Contracts**
+   ```
+   Function: withdraw(account, amount)
+
+   Preconditions:
+   - amount > 0
+   - amount <= account.balance
+   - account.status == ACTIVE
+
+   Postconditions:
+   - account.balance == old(account.balance) - amount
+   - return value == amount
+
+   Invariants:
+   - account.balance >= 0 (always)
+   ```
+
+### PHASE 2: IMPLEMENTATION BY LANGUAGE
+
+#### Python (using `deal`)
+
+```python
+pip install deal
+```
+
+```python
+import deal
+
+# Class invariant
+@deal.inv(lambda self: self.balance >= 0)
+class Account:
+    def __init__(self, initial_balance: float):
+        self.balance = initial_balance
+        self.status = "ACTIVE"
+
+    # Preconditions and postconditions
+    @deal.pre(lambda self, amount: amount > 0, message="Amount must be positive")
+    @deal.pre(lambda self, amount: amount <= self.balance, message="Insufficient funds")
+    @deal.pre(lambda self: self.status == "ACTIVE", message="Account must be active")
+    @deal.post(lambda result: result > 0)
+    @deal.ensure(lambda self, amount, result: self.balance == deal.old(self.balance) - amount)
+    def withdraw(self, amount: float) -> float:
+        self.balance -= amount
+        return amount
+
+    @deal.pre(lambda self, amount: amount > 0)
+    @deal.ensure(lambda self, amount, result: self.balance == deal.old(self.balance) + amount)
+    def deposit(self, amount: float) -> None:
+        self.balance += amount
+
+# Side-effect tracking (unique to deal)
+@deal.pure  # Function has no side effects
+def calculate_interest(principal: float, rate: float) -> float:
+    return principal * rate
+```
+
+**Validation:**
+```bash
+# Static analysis
+deal lint src/
+
+# Runtime checking (enabled by default)
+python -m pytest tests/
+
+# Disable in production (optional)
+DEAL_RAISE=false python app.py
+```
+
+#### Rust (using `contracts`)
+
+```bash
+cargo add contracts
+```
+
+```rust
+use contracts::*;
+
+pub struct Account {
+    balance: f64,
+    status: AccountStatus,
+}
+
+impl Account {
+    // Preconditions
+    #[requires(amount > 0.0, "Amount must be positive")]
+    #[requires(amount <= self.balance, "Insufficient funds")]
+    #[requires(self.status == AccountStatus::Active, "Account must be active")]
+    // Postconditions
+    #[ensures(ret == amount)]
+    #[ensures(self.balance == old(self.balance) - amount)]
+    pub fn withdraw(&mut self, amount: f64) -> f64 {
+        self.balance -= amount;
+        amount
+    }
+
+    #[requires(amount > 0.0)]
+    #[ensures(self.balance == old(self.balance) + amount)]
+    pub fn deposit(&mut self, amount: f64) {
+        self.balance += amount;
+    }
+}
+
+// Class invariant via debug_invariant
+#[debug_invariant(self.balance >= 0.0)]
+impl Account {
+    // ... methods
+}
+```
+
+**Validation:**
+```bash
+cargo check
+cargo test
+```
+
+#### TypeScript (using `ts-code-contracts`)
+
+```bash
+npm install ts-code-contracts
+```
+
+```typescript
+import {
+  requires,
+  ensures,
+  checks,
+  PreconditionError,
+  PostconditionError,
+} from 'ts-code-contracts';
+
+interface Account {
+  balance: number;
+  status: 'ACTIVE' | 'FROZEN';
+}
+
+function withdraw(account: Account, amount: number): number {
+  // Preconditions
+  requires(amount > 0, 'Amount must be positive');
+  requires(amount <= account.balance, 'Insufficient funds');
+  requires(account.status === 'ACTIVE', 'Account must be active');
+
+  const oldBalance = account.balance;
+
+  // Implementation
+  account.balance -= amount;
+
+  // Postconditions
+  ensures(account.balance === oldBalance - amount, 'Balance not updated correctly');
+  ensures(account.balance >= 0, 'Balance cannot be negative');
+
+  return amount;
+}
+
+// State validation (invariants)
+function validateAccountInvariant(account: Account): void {
+  checks(account.balance >= 0, 'Account balance must be non-negative');
+}
+
+// Usage with try-catch
+try {
+  const result = withdraw(account, 100);
+} catch (e) {
+  if (e instanceof PreconditionError) {
+    console.error('Caller violated contract:', e.message);
+  } else if (e instanceof PostconditionError) {
+    console.error('Implementation bug:', e.message);
+  }
+}
+```
+
+**Validation:**
+```bash
+npx tsc --noEmit
+npm test
+```
+
+#### Kotlin (Built-in)
+
+```kotlin
+class Account(
+    private var balance: Double,
+    private var status: AccountStatus = AccountStatus.ACTIVE
+) {
+    init {
+        // Invariant check on construction
+        check(balance >= 0) { "Balance must be non-negative" }
+    }
+
+    fun withdraw(amount: Double): Double {
+        // Preconditions
+        require(amount > 0) { "Amount must be positive" }
+        require(amount <= balance) { "Insufficient funds" }
+        require(status == AccountStatus.ACTIVE) { "Account must be active" }
+
+        val oldBalance = balance
+
+        // Implementation
+        balance -= amount
+
+        // Postconditions
+        check(balance == oldBalance - amount) { "Balance not updated correctly" }
+        check(balance >= 0) { "Invariant violated: negative balance" }
+
+        return amount
+    }
+
+    fun deposit(amount: Double) {
+        require(amount > 0) { "Amount must be positive" }
+        balance += amount
+        check(balance >= 0) { "Invariant violated" }
+    }
+}
+```
+
+**Validation:**
+```bash
+./gradlew check
+./gradlew test
+```
+
+#### Java (using Guava)
+
+```java
+import static com.google.common.base.Preconditions.*;
+
+public class Account {
+    private double balance;
+    private AccountStatus status;
+
+    public Account(double initialBalance) {
+        checkArgument(initialBalance >= 0, "Initial balance must be non-negative");
+        this.balance = initialBalance;
+        this.status = AccountStatus.ACTIVE;
+    }
+
+    public double withdraw(double amount) {
+        // Preconditions
+        checkArgument(amount > 0, "Amount must be positive");
+        checkArgument(amount <= balance, "Insufficient funds: requested %s, available %s", amount, balance);
+        checkState(status == AccountStatus.ACTIVE, "Account must be active");
+
+        double oldBalance = balance;
+
+        // Implementation
+        balance -= amount;
+
+        // Postconditions (manual)
+        assert balance == oldBalance - amount : "Balance not updated correctly";
+        assert balance >= 0 : "Invariant violated: negative balance";
+
+        return amount;
+    }
+
+    public void deposit(double amount) {
+        checkArgument(amount > 0, "Amount must be positive");
+        balance += amount;
+    }
+}
+```
+
+**Validation:**
+```bash
+mvn test
+# Enable assertions: java -ea -jar app.jar
+```
+
+#### C++ (using GSL)
+
+```cpp
+#include <gsl/gsl>
+
+class Account {
+private:
+    double balance_;
+    AccountStatus status_;
+
+public:
+    Account(double initial_balance) : balance_(initial_balance), status_(AccountStatus::Active) {
+        Expects(initial_balance >= 0);  // Precondition
+    }
+
+    double withdraw(double amount) {
+        // Preconditions
+        Expects(amount > 0);
+        Expects(amount <= balance_);
+        Expects(status_ == AccountStatus::Active);
+
+        double old_balance = balance_;
+
+        // Implementation
+        balance_ -= amount;
+
+        // Postconditions
+        Ensures(balance_ == old_balance - amount);
+        Ensures(balance_ >= 0);
+
+        return amount;
+    }
+
+    void deposit(double amount) {
+        Expects(amount > 0);
+        balance_ += amount;
+        Ensures(balance_ >= 0);
+    }
+};
+```
+
+**Validation:**
+```bash
+cmake --build build
+ctest --test-dir build
+```
+
+### PHASE 3: TESTING CONTRACTS
+
+1. **Test Precondition Violations**
+   ```python
+   import pytest
+   from deal import PreContractError
+
+   def test_withdraw_negative_amount_violates_precondition():
+       account = Account(100)
+       with pytest.raises(PreContractError):
+           account.withdraw(-50)
+
+   def test_withdraw_exceeds_balance_violates_precondition():
+       account = Account(100)
+       with pytest.raises(PreContractError):
+           account.withdraw(150)
+   ```
+
+2. **Test Postcondition Guarantees**
+   ```python
+   def test_withdraw_updates_balance_correctly():
+       account = Account(100)
+       result = account.withdraw(30)
+       assert result == 30
+       assert account.balance == 70
+   ```
+
+3. **Test Invariant Maintenance**
+   ```python
+   def test_invariant_balance_never_negative():
+       account = Account(100)
+       account.withdraw(50)
+       account.deposit(25)
+       account.withdraw(75)
+       assert account.balance >= 0  # Invariant
+   ```
+
+### PHASE 4: VALIDATION
+
+1. **Static Analysis**
+   ```bash
+   # Python
+   deal lint src/
+
+   # Rust
+   cargo clippy
+
+   # TypeScript
+   npx tsc --noEmit
+   ```
+
+2. **Runtime Contract Checking**
+   ```bash
+   # Python (deal) - enabled by default
+   pytest tests/
+
+   # Rust - enabled in debug builds
+   cargo test
+
+   # Java - enable assertions
+   java -ea -jar app.jar
+   ```
+
+3. **Contract Coverage**
+   - All public functions have preconditions
+   - Functions with side effects have postconditions
+   - Stateful classes have invariants
+
+## Contract Design Principles
+
+| Principle | Description |
+|-----------|-------------|
+| **Liskov Substitution** | Subclass can weaken preconditions, strengthen postconditions |
+| **Fail Fast** | Contract violations throw immediately |
+| **Documentation** | Contracts ARE documentation |
+| **Separation** | Contracts vs implementation clearly separated |
+| **Inheritance** | Contracts propagate through inheritance |
+
+## Required Output
+
+Provide:
+1. Contract specification document (pre/post/invariants)
+2. Implementation with contract annotations
+3. Tests for precondition violations
+4. Tests for postcondition guarantees
+5. Static analysis output
+6. Runtime validation output
+
+## Validation Gates Summary
+
+| Gate | Command | Must Pass |
+|------|---------|-----------|
+| Static Analysis | `deal lint / cargo clippy / tsc` | Yes |
+| Contract Syntax | Compilation succeeds | Yes |
+| Precondition Tests | Tests for violations pass | Yes |
+| Postcondition Tests | Tests for guarantees pass | Yes |
+| Invariant Tests | Invariant maintained | Yes |
+| Full Test Suite | All tests pass | Yes |
+
+CRITICAL: Contracts are not optional. Every public function must have explicit preconditions. Side-effecting functions must have postconditions. Stateful classes must have invariants.
 """

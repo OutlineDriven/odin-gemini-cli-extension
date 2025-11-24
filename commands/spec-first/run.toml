@@ -1,3 +1,355 @@
-description = ""
-prompt="""
+description = "Spec-first development using Alloy 6 (primary) and TLA+/Apalache for formal specifications"
+
+prompt = """You are executing SPEC-FIRST DEVELOPMENT where formal specifications are validated before implementation.
+
+## Philosophy
+
+Formal specifications before code. **Alloy 6 is the primary tool** for structural specifications with excellent visualization. TLA+/Apalache is used for distributed systems and temporal properties. Counterexamples reveal design flaws before any code is written.
+
+## Tool Selection
+
+| Problem Type | Tool | Rationale |
+|--------------|------|-----------|
+| Data models, schemas | **Alloy 6** | Relational logic, visual feedback |
+| State machines | **Alloy 6** | Temporal logic support in v6 |
+| Configurations | **Alloy 6** | Constraint solving |
+| Distributed protocols | TLA+/Apalache | Temporal logic, concurrency |
+| Concurrent algorithms | TLA+/Apalache | Happens-before, fairness |
+
+## Workflow (Alloy 6 - Primary)
+
+### PHASE 1: STRUCTURAL SPECIFICATION
+
+1. **Analyze Requirements**
+   - Identify entities and relationships
+   - Extract constraints and invariants
+   - Determine what properties must hold
+
+2. **Create Alloy Specification**
+   ```alloy
+   -- model.als
+
+   -- Signatures define entities
+   sig User {
+     roles: set Role,
+     owns: set Resource
+   }
+
+   sig Role {
+     permissions: set Permission
+   }
+
+   sig Resource {
+     readers: set User,
+     writers: set User
+   }
+
+   sig Permission {}
+
+   -- Facts define invariants
+   fact OwnerCanWrite {
+     all r: Resource, u: User |
+       u in r.owners implies u in r.writers
+   }
+
+   fact WriterCanRead {
+     all r: Resource |
+       r.writers in r.readers
+   }
+
+   -- Assertions to check
+   assert NoOrphanResources {
+     all r: Resource | some r.owners
+   }
+
+   -- Commands to run
+   run {} for 5  -- Find instances
+   check NoOrphanResources for 10  -- Check assertion
+   ```
+
+3. **VALIDATION GATE: Spec Compiles**
+   ```bash
+   java -jar alloy6.jar model.als
+   # Or CLI:
+   alloy6-cli parse model.als
+   ```
+
+### PHASE 2: INSTANCE EXPLORATION
+
+1. **Generate Valid Instances**
+   ```bash
+   alloy6-cli run --scenario model.als --scope 5
+   ```
+   - Visualize generated instances
+   - Verify they match intuition
+   - Identify missing constraints if invalid instances appear
+
+2. **Explore Counterexamples**
+   ```bash
+   alloy6-cli check model.als --scope 10
+   ```
+   - If assertions fail, analyze counterexample
+   - Counterexamples reveal specification bugs
+   - Refine spec until no counterexamples found
+
+3. **VALIDATION GATE: All Assertions Pass**
+   ```bash
+   alloy6-cli check model.als --scope 10
+   # Output: No counterexample found
+   ```
+
+### PHASE 3: TEMPORAL PROPERTIES (Alloy 6)
+
+1. **Add Mutable State** (Alloy 6 feature)
+   ```alloy
+   var sig ActiveUser in User {}
+
+   pred login[u: User] {
+     u not in ActiveUser
+     ActiveUser' = ActiveUser + u
+   }
+
+   pred logout[u: User] {
+     u in ActiveUser
+     ActiveUser' = ActiveUser - u
+   }
+   ```
+
+2. **Temporal Assertions**
+   ```alloy
+   -- LTL-style properties
+   assert EventualLogout {
+     always (all u: User | u in ActiveUser implies eventually u not in ActiveUser)
+   }
+
+   check EventualLogout for 5 steps
+   ```
+
+3. **VALIDATION GATE: Temporal Properties Hold**
+   ```bash
+   alloy6-cli check --steps 10 model.als
+   ```
+
+### PHASE 4: IMPLEMENTATION
+
+1. **Translate Specification to Code**
+   - Signatures → Classes/Types
+   - Facts → Invariants/Assertions
+   - Relations → Fields/References
+
+   **Example (TypeScript):**
+   ```typescript
+   // From Alloy: sig User { roles: set Role, owns: set Resource }
+   interface User {
+     id: string;
+     roles: Set<Role>;
+     owns: Set<Resource>;
+   }
+
+   // From Alloy: fact OwnerCanWrite
+   function validateOwnerCanWrite(resource: Resource): boolean {
+     return resource.owners.isSubsetOf(resource.writers);
+   }
+
+   // From Alloy: fact WriterCanRead
+   function validateWriterCanRead(resource: Resource): boolean {
+     return resource.writers.isSubsetOf(resource.readers);
+   }
+   ```
+
+2. **Implement Operations Preserving Invariants**
+   ```typescript
+   function addOwner(resource: Resource, user: User): Resource {
+     // Alloy spec guarantees: owner implies writer implies reader
+     return {
+       ...resource,
+       owners: resource.owners.add(user),
+       writers: resource.writers.add(user),
+       readers: resource.readers.add(user),
+     };
+   }
+   ```
+
+### PHASE 5: VERIFICATION
+
+1. **Property-Based Testing**
+   ```python
+   from hypothesis import given, strategies as st
+
+   @given(users=st.lists(st.builds(User)))
+   def test_owner_can_write_invariant(users):
+       for resource in generate_resources(users):
+           # Alloy assertion: owner implies writer
+           for owner in resource.owners:
+               assert owner in resource.writers
+   ```
+
+2. **FINAL VALIDATION**
+   ```bash
+   # Spec still valid
+   alloy6-cli check model.als
+
+   # Implementation passes tests
+   npm test
+   pytest --hypothesis-show-statistics
+   ```
+
+---
+
+## Workflow (TLA+ / Apalache - For Temporal/Distributed)
+
+Use this workflow when the problem involves:
+- Distributed consensus (Paxos, Raft)
+- Concurrent algorithms
+- Temporal properties (eventually, always)
+- Fairness requirements
+
+### PHASE 1: TLA+ SPECIFICATION
+
+1. **Create TLA+ Module**
+   ```tla
+   ---- MODULE TwoPhaseCommit ----
+   EXTENDS Integers, FiniteSets
+
+   CONSTANTS RMs  \* Resource managers
+
+   VARIABLES
+     rmState,      \* State of each RM
+     tmState,      \* Transaction manager state
+     tmPrepared,   \* RMs that sent Prepared
+     msgs          \* Messages in flight
+
+   Init ==
+     /\ rmState = [rm \\in RMs |-> "working"]
+     /\ tmState = "init"
+     /\ tmPrepared = {}
+     /\ msgs = {}
+
+   \* RM sends Prepared message
+   RMPrepare(rm) ==
+     /\ rmState[rm] = "working"
+     /\ rmState' = [rmState EXCEPT ![rm] = "prepared"]
+     /\ msgs' = msgs \\cup {[type |-> "Prepared", rm |-> rm]}
+     /\ UNCHANGED <<tmState, tmPrepared>>
+
+   \* More transitions...
+
+   Next == \\E rm \\in RMs: RMPrepare(rm) \\/ ...
+
+   \* Safety property
+   Consistent ==
+     \\A rm1, rm2 \\in RMs:
+       ~(rmState[rm1] = "committed" /\\ rmState[rm2] = "aborted")
+
+   \* Spec includes fairness
+   Spec == Init /\\ [][Next]_vars /\\ WF_vars(Next)
+
+   THEOREM Spec => []Consistent
+   ====
+   ```
+
+2. **VALIDATION GATE: Spec Parses**
+   ```bash
+   apalache-mc parse TwoPhaseCommit.tla
+   ```
+
+### PHASE 2: MODEL CHECKING
+
+1. **Check with TLC (Small Bounds)**
+   ```bash
+   java -jar tla2tools.jar -deadlock -config spec.cfg TwoPhaseCommit
+   ```
+
+2. **Check with Apalache (Larger Bounds)**
+   ```bash
+   apalache-mc check --length 10 TwoPhaseCommit.tla
+   ```
+
+3. **VALIDATION GATE: No Counterexamples**
+   ```bash
+   apalache-mc check --length 15 TwoPhaseCommit.tla
+   # Output: No error found
+   ```
+
+### PHASE 3: IMPLEMENTATION
+
+Follow same pattern as Alloy: translate spec to code, preserve invariants.
+
+---
+
+## Alloy 6 Quick Reference
+
+**Commands:**
+```bash
+java -jar alloy6.jar model.als     # GUI
+alloy6-cli parse model.als          # Parse check
+alloy6-cli run model.als            # Find instances
+alloy6-cli check model.als          # Check assertions
+alloy6-cli check --steps N model.als # Temporal (N steps)
+```
+
+**Syntax:**
+```alloy
+sig Name { field: Type }           -- Signature
+one sig Singleton {}               -- Exactly one
+abstract sig Base {}               -- Abstract
+sig Child extends Base {}          -- Inheritance
+var sig Mutable in Base {}         -- Mutable (v6)
+
+fact Name { constraint }           -- Global constraint
+pred name[args] { formula }        -- Predicate
+fun name[args]: Type { expr }      -- Function
+assert Name { formula }            -- Assertion
+
+run predicate for N                -- Find N instances
+check assertion for N              -- Check up to scope N
+```
+
+## TLA+ Quick Reference
+
+**Commands:**
+```bash
+apalache-mc parse spec.tla          # Parse
+apalache-mc check spec.tla          # Model check
+apalache-mc check --length N spec.tla  # Bounded check
+```
+
+**Syntax:**
+```tla
+VARIABLES x, y, z
+Init == x = 0 /\\ y = 0
+Next == x' = x + 1 /\\ y' = y
+Spec == Init /\\ [][Next]_<<x,y>>
+
+\* Operators
+/\\  -- conjunction
+\\/  -- disjunction
+~    -- negation
+=>   -- implication
+[]   -- always (temporal)
+<>   -- eventually (temporal)
+```
+
+## Required Output
+
+Provide:
+1. Formal specification file (`.als` or `.tla`)
+2. Validation output showing no counterexamples
+3. Target language implementation with spec correspondence
+4. Property-based tests verifying invariants
+5. Mapping document: spec element → code element
+
+## Validation Gates Summary
+
+| Gate | Command | Must Pass |
+|------|---------|-----------|
+| Alloy Parse | `alloy6-cli parse model.als` | Yes |
+| Alloy Check | `alloy6-cli check model.als` | Yes |
+| Temporal | `alloy6-cli check --steps N` | Yes (if temporal) |
+| TLA+ Parse | `apalache-mc parse spec.tla` | Yes (if TLA+) |
+| TLA+ Check | `apalache-mc check spec.tla` | Yes (if TLA+) |
+| Implementation | `npm test / cargo test` | Yes |
+| Properties | `pytest --hypothesis` | Yes |
+
+CRITICAL: Do not implement until specification passes all checks with no counterexamples.
 """
