@@ -20,14 +20,7 @@ cargo install tokei
 cargo install --locked --bin jj jj-cli
 ```
 
-## Full and Simple(yet powerful) Installation (Recommended due to Gemini Extensions Feature's Limitations)
-
-```bash
-git clone https://github.com/OutlineDriven/odin-gemini-cli-extension
-cp -r ./odin-gemini-cli-extension/ ~/.gemini/
-```
-
-## Official Extension Based Install
+## Official Extension Installation (Recommended now!)
 
 ```bash
 gemini extensions install https://github.com/OutlineDriven/odin-gemini-cli-extension
