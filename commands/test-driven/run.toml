@@ -1,238 +1,611 @@
-description = "Strict XP-style Test-Driven Development with type-driven hybrid approach"
+description = "Strict XP-style Test-Driven Development with Idris 2 type-driven hybrid approach"
 
-prompt = """You are executing STRICT TEST-DRIVEN DEVELOPMENT following Extreme Programming (XP) discipline with type-driven enhancements.
+prompt = """You are executing STRICT TEST-DRIVEN DEVELOPMENT following Extreme Programming (XP) discipline with Idris 2 type-driven enhancements.
 
 ## Philosophy
 
-Never write production code without a failing test. Tests drive design. The Red-Green-Refactor cycle is sacred. Types complement tests by encoding contracts that the compiler enforces.
+Never write production code without a failing test. Tests drive design. The Red-Green-Refactor cycle is sacred. **Idris 2 types complement tests** by encoding contracts that the compiler enforces - types catch structural errors at compile time, tests validate behavior at runtime.
 
 ## Constitutional Rules (NON-NEGOTIABLE)
 
 1. **TEST-FIRST ABSOLUTE**: No implementation code before tests exist
-2. **SPECIFICATION ISOLATION**: Generate tests from REQUIREMENTS ONLY, never from code inspection
-3. **ONE CYCLE = ONE TEST**: RED → GREEN → REFACTOR per test (30-120 seconds)
-4. **ASSERTION DISCIPLINE**: One clear assertion per test
-5. **ERROR PATHS FIRST**: Test error cases before happy paths
-6. **REFACTOR-ONLY-ON-GREEN**: Refactoring allowed ONLY when all tests pass
-7. **COVERAGE GATES**: Target 80%+ on critical paths
+2. **TYPE-FIRST SPECIFICATION**: Define Idris 2 types before writing tests
+3. **SPECIFICATION ISOLATION**: Generate tests from REQUIREMENTS ONLY, never from code inspection
+4. **ONE CYCLE = ONE TEST**: RED -> GREEN -> REFACTOR per test (30-120 seconds)
+5. **ASSERTION DISCIPLINE**: One clear assertion per test
+6. **ERROR PATHS FIRST**: Test error cases before happy paths
+7. **REFACTOR-ONLY-ON-GREEN**: Refactoring allowed ONLY when all tests pass
+8. **COVERAGE GATES**: Target 80%+ on critical paths
 
-## Workflow
+## Tool Stack
 
-### PHASE 1: TYPE DESIGN (Specification Layer)
+| Layer | Tool | Purpose |
+|-------|------|---------|
+| Type Specification | Idris 2 (v0.8.0+) | Compile-time contracts |
+| Property Testing | Hypothesis/fast-check | Generative testing |
+| Unit Testing | pytest/Vitest/Kotest | Behavioral validation |
+| Coverage | pytest-cov/c8/tarpaulin | Coverage measurement |
+| Mutation | mutmut/Stryker | Test quality validation |
 
-1. **Read Requirements Only**
-   - Extract core behaviors and constraints
-   - Identify data types and operations
-   - DO NOT look at any existing code
+---
 
-2. **Define Type Signatures**
-   ```typescript
-   // Type signature expresses contract
-   type ValidationError =
-     | { kind: 'empty_input' }
-     | { kind: 'invalid_format'; details: string };
+## PHASE 1: TYPE SPECIFICATION (Idris 2)
 
-   // Result type encodes success/failure
-   type Result<T, E> =
-     | { ok: true; value: T }
-     | { ok: false; error: E };
+### 1.1 Read Requirements Only
 
-   // Function signature IS the specification
-   function parseEmail(input: string): Result<Email, ValidationError>;
-   ```
+- Extract core behaviors and constraints
+- Identify data types and operations
+- **DO NOT look at any existing code**
 
-3. **VALIDATION GATE: Types Compile**
-   ```bash
-   npx tsc --noEmit
-   ```
+### 1.2 Define Types in Idris 2
 
-### PHASE 2: PROPERTY-BASED TESTS
+```idris
+-- Spec.idr: Type-level specification
 
-1. **Generate Tests from Type Signatures**
-   ```python
-   from hypothesis import given, strategies as st
+module Spec
 
-   # Property: Parser always returns Result
-   @given(st.text())
-   def test_parse_email_returns_result(input_str):
-       result = parse_email(input_str)
-       assert isinstance(result, Result)
+-- Refined types encode constraints
+data Positive : Nat -> Type where
+  MkPositive : (n : Nat) -> {auto prf : LTE 1 n} -> Positive n
 
-   # Property: Valid emails never fail
-   @given(valid_email_strategy())
-   def test_valid_emails_succeed(email):
-       result = parse_email(email)
-       assert result.ok is True
+data NonEmpty : List a -> Type where
+  IsNonEmpty : (xs : List a) -> {auto prf : NonEmpty xs} -> NonEmpty xs
 
-   # Property: Invalid inputs fail with reason
-   @given(invalid_email_strategy())
-   def test_invalid_emails_fail_with_error(email):
-       result = parse_email(email)
-       assert result.ok is False
-       assert result.error is not None
-   ```
+-- Result type for operations
+data Result : Type -> Type -> Type where
+  Ok : value -> Result value error
+  Err : error -> Result value error
 
-2. **VALIDATION GATE: Property Tests Defined**
-   - Tests should FAIL (no implementation yet)
-   - Verify failure messages are meaningful
+-- Error domain (exhaustive)
+data ValidationError : Type where
+  EmptyInput : ValidationError
+  InvalidFormat : (reason : String) -> ValidationError
+  OutOfRange : (min : Int) -> (max : Int) -> (actual : Int) -> ValidationError
 
-### PHASE 3: UNIT TESTS (RED State)
+-- Function signature IS the specification
+-- parseEmail : String -> Result Email ValidationError
+-- The type tells us:
+--   - Input: any String
+--   - Output: either valid Email or ValidationError
+--   - All error cases are enumerated
+--   - No exceptions, no null, no undefined
 
-1. **Write Error Case Tests FIRST**
-   ```python
-   # AAA Pattern: Arrange, Act, Assert
+-- Domain type with invariants
+record Email where
+  constructor MkEmail
+  localPart : String
+  domain : String
+  -- Invariants encoded in constructor
+  localNotEmpty : NonEmpty (unpack localPart)
+  domainNotEmpty : NonEmpty (unpack domain)
+  domainHasDot : Elem '.' (unpack domain)
 
-   def test_parse_email_rejects_empty_input():
-       # Arrange
-       input_email = ""
-       # Act
-       result = parse_email(input_email)
-       # Assert
-       assert result.ok is False
-       assert result.error.kind == 'empty_input'
+-- Operation type encodes preconditions/postconditions
+record Account where
+  constructor MkAccount
+  balance : Nat  -- Non-negative by construction
+  status : AccountStatus
 
-   def test_parse_email_rejects_no_at_symbol():
-       # Arrange
-       input_email = "userexample.com"
-       # Act
-       result = parse_email(input_email)
-       # Assert
-       assert result.ok is False
-       assert result.error.kind == 'invalid_format'
+-- Type signature with proof requirements
+withdraw : (acc : Account) ->
+           (amount : Positive n) ->
+           (sufficient : LTE n (balance acc)) ->
+           Account
+```
 
-   def test_parse_email_rejects_multiple_at_symbols():
-       input_email = "user@@example.com"
-       result = parse_email(input_email)
-       assert result.ok is False
-   ```
+### 1.3 VALIDATION GATE: Types Compile
 
-2. **Write Happy Path Tests**
-   ```python
-   def test_parse_email_accepts_valid_simple():
-       input_email = "user@example.com"
-       result = parse_email(input_email)
-       assert result.ok is True
-       assert result.value.address == input_email
+```bash
+# Idris 2 typechecks
+idris2 --check Spec.idr
 
-   def test_parse_email_accepts_subdomain():
-       input_email = "user@mail.example.co.uk"
-       result = parse_email(input_email)
-       assert result.ok is True
-   ```
+# Interactive type exploration
+idris2 --repl Spec.idr
+> :t withdraw
+> :doc Email
+```
 
-3. **Write Edge Case Tests**
-   ```python
-   def test_parse_email_handles_max_length():
-       # RFC 5321: max 254 characters
-       long_local = "a" * 64
-       long_domain = "b" * 185 + ".com"
-       input_email = f"{long_local}@{long_domain}"
-       result = parse_email(input_email)
-       # Verify appropriate handling
+---
 
-   def test_parse_email_handles_unicode():
-       input_email = "user@example.com"  # or test unicode support
-       result = parse_email(input_email)
-       # Verify expected behavior
-   ```
+## PHASE 2: PROPERTY-BASED TESTS
 
-4. **VALIDATION GATE: All Tests RED**
-   ```bash
-   pytest tests/ --tb=short
-   # Expected: ALL TESTS FAIL
-   ```
-   - MUST FAIL before implementation
-   - Verify failure is due to missing implementation, not test bugs
+### 2.1 Generate Tests from Type Signatures
 
-### PHASE 4: IMPLEMENTATION (GREEN State)
+Properties derived from types:
 
-1. **Implement MINIMUM Code to Pass ONE Test**
-   ```python
-   def parse_email(input_str: str) -> Result[Email, ValidationError]:
-       # Minimum to pass test_parse_email_rejects_empty_input
-       if not input_str:
-           return Result.error(ValidationError(kind='empty_input'))
-       # ... more implementation as tests require
-   ```
+| Type Constraint | Property |
+|-----------------|----------|
+| `Positive n` | `forall n, n > 0 ==> ...` |
+| `Result T E` | `forall input, isOk(result) or isErr(result)` |
+| `LTE n m` | `forall n m, n <= m ==> ...` |
+| `NonEmpty xs` | `forall xs, length(xs) > 0 ==> ...` |
 
-2. **Red-Green Cycle (30-120 seconds per test)**
-   ```
-   For each failing test:
-     1. Run tests → Confirm RED (this test fails)
-     2. Write MINIMUM code to pass THIS test
-     3. Run tests → Confirm GREEN (this test passes)
-     4. Commit? (optional micro-commit)
-     5. Next test
-   ```
+### 2.2 Python Property Tests (Hypothesis)
 
-3. **VALIDATION GATE: All Tests GREEN**
-   ```bash
-   pytest tests/ -v
-   # Expected: ALL TESTS PASS
-   ```
+```python
+# test_properties.py
+from hypothesis import given, strategies as st, assume, settings
+from hypothesis.stateful import RuleBasedStateMachine, rule, precondition
 
-### PHASE 5: REFACTOR (Maintain GREEN)
+# Strategy for valid emails (from Idris Email type)
+valid_email_strategy = st.emails()
 
-1. **Refactor Rules**
-   - Run tests BEFORE any refactoring → must be GREEN
-   - Make ONE change at a time
-   - Run tests AFTER each change → must stay GREEN
-   - If tests fail, REVERT immediately
+# Strategy for positive integers (from Idris Positive type)
+positive_strategy = st.integers(min_value=1)
 
-2. **Refactoring Opportunities**
-   - Extract methods for clarity
-   - Remove duplication
-   - Improve naming
-   - Simplify conditionals
-   - DO NOT add features
+class AccountModel(RuleBasedStateMachine):
+    """Stateful property test matching Idris Account type."""
 
-3. **VALIDATION GATE: Tests Still GREEN**
-   ```bash
-   pytest tests/ -v
-   # Expected: ALL TESTS STILL PASS
-   ```
+    def __init__(self):
+        super().__init__()
+        self.balance = 0
+        self.status = "active"
 
-### PHASE 6: COVERAGE VALIDATION
+    @rule(amount=positive_strategy)
+    def deposit(self, amount):
+        """Property: deposit always increases balance by exactly amount."""
+        old_balance = self.balance
+        self.balance += amount
+        assert self.balance == old_balance + amount
+        assert self.balance >= 0  # Nat invariant
 
-1. **Measure Coverage**
-   ```bash
-   pytest --cov=src --cov-report=term-missing tests/
-   ```
+    @rule(amount=positive_strategy)
+    @precondition(lambda self: self.status == "active")
+    def withdraw(self, amount):
+        """Property: withdraw decreases balance iff sufficient funds."""
+        if amount <= self.balance:
+            old_balance = self.balance
+            self.balance -= amount
+            assert self.balance == old_balance - amount
+            assert self.balance >= 0  # Nat invariant
 
-2. **Coverage Requirements**
-   - Critical paths: 80%+ statement coverage
-   - Error handlers: 100% coverage
-   - Public API: 100% coverage
+    @rule()
+    def check_invariants(self):
+        """Property: invariants always hold (from Idris record)."""
+        assert self.balance >= 0
+        assert self.status in ["active", "frozen", "closed"]
 
-3. **VALIDATION GATE: Coverage Met**
-   ```bash
-   pytest --cov=src --cov-fail-under=80 tests/
-   # Expected: Coverage >= 80%
-   ```
+TestAccount = AccountModel.TestCase
 
-### PHASE 7: PROPERTY TEST EXECUTION
+@given(st.text())
+def test_parse_email_returns_result(input_str):
+    """Property: parser always returns Result (no exceptions)."""
+    result = parse_email(input_str)
+    assert isinstance(result, (Ok, Err))
 
-1. **Run Full Property Suite**
-   ```bash
-   pytest --hypothesis-show-statistics tests/
-   ```
-   - Hypothesis generates 100+ test cases
-   - Shrinking finds minimal counterexamples
+@given(valid_email_strategy)
+def test_valid_emails_succeed(email):
+    """Property: valid emails parse successfully."""
+    result = parse_email(email)
+    assert isinstance(result, Ok)
 
-2. **FINAL VALIDATION**
-   ```bash
-   # All unit tests pass
-   pytest tests/ -v
+@given(st.text().filter(lambda s: '@' not in s))
+def test_no_at_fails_with_error(email):
+    """Property: missing @ always produces InvalidFormat error."""
+    result = parse_email(email)
+    assert isinstance(result, Err)
+    assert result.error.kind == 'invalid_format'
+```
 
-   # Property tests pass
-   pytest --hypothesis-show-statistics tests/
+### 2.3 TypeScript Property Tests (fast-check)
 
-   # Coverage met
-   pytest --cov=src --cov-fail-under=80 tests/
+```typescript
+// test_properties.ts
+import fc from 'fast-check';
+import { describe, it, expect } from 'vitest';
 
-   # Types check
-   npx tsc --noEmit  # or pyright/mypy
-   ```
+describe('Property-Based Tests from Idris Types', () => {
+  // Property: Result is always Ok or Err (never throws)
+  it('parseEmail always returns Result', () => {
+    fc.assert(
+      fc.property(fc.string(), (input) => {
+        const result = parseEmail(input);
+        return result.ok === true || result.ok === false;
+      }),
+      { numRuns: 1000 }
+    );
+  });
+
+  // Property: Positive amount (from Idris Positive type)
+  it('withdraw with positive amount behaves correctly', () => {
+    fc.assert(
+      fc.property(
+        fc.nat({ max: 10000 }),  // balance
+        fc.integer({ min: 1, max: 1000 }),  // positive amount
+        (balance, amount) => {
+          const account = createAccount(balance);
+          const result = withdraw(account, amount);
+
+          if (amount <= balance) {
+            // Precondition satisfied: should succeed
+            expect(result.ok).toBe(true);
+            expect(result.value.balance).toBe(balance - amount);
+          } else {
+            // Precondition violated: should fail
+            expect(result.ok).toBe(false);
+          }
+        }
+      )
+    );
+  });
+
+  // Property: Nat is always non-negative (from Idris Nat type)
+  it('balance is always non-negative', () => {
+    fc.assert(
+      fc.property(
+        fc.commands(accountCommands, { maxCommands: 50 }),
+        (cmds) => {
+          const model = new AccountModel();
+          const real = new Account(0);
+          fc.modelRun(() => ({ model, real }), cmds);
+        }
+      )
+    );
+  });
+});
+```
+
+### 2.4 VALIDATION GATE: Property Tests Defined
+
+```bash
+# Tests should FAIL (no implementation yet)
+pytest tests/test_properties.py --tb=short
+# Expected: ALL TESTS FAIL
+
+npx vitest run test_properties.ts
+# Expected: ALL TESTS FAIL
+```
+
+---
+
+## PHASE 3: UNIT TESTS (RED State)
+
+### 3.1 Write Error Case Tests FIRST
+
+```python
+# test_email.py
+import pytest
+from app import parse_email, ValidationError
+
+class TestParseEmailErrors:
+    """Error cases from Idris ValidationError type."""
+
+    def test_empty_input_returns_empty_input_error(self):
+        # Arrange (from Idris: EmptyInput constructor)
+        input_email = ""
+        # Act
+        result = parse_email(input_email)
+        # Assert
+        assert result.ok is False
+        assert result.error.kind == 'empty_input'
+
+    def test_no_at_symbol_returns_invalid_format(self):
+        # Arrange (from Idris: InvalidFormat constructor)
+        input_email = "userexample.com"
+        # Act
+        result = parse_email(input_email)
+        # Assert
+        assert result.ok is False
+        assert result.error.kind == 'invalid_format'
+        assert 'missing @' in result.error.reason.lower()
+
+    def test_multiple_at_symbols_returns_invalid_format(self):
+        input_email = "user@@example.com"
+        result = parse_email(input_email)
+        assert result.ok is False
+        assert result.error.kind == 'invalid_format'
+
+    def test_empty_local_part_returns_invalid_format(self):
+        # From Idris: localNotEmpty : NonEmpty (unpack localPart)
+        input_email = "@example.com"
+        result = parse_email(input_email)
+        assert result.ok is False
+
+    def test_empty_domain_returns_invalid_format(self):
+        # From Idris: domainNotEmpty : NonEmpty (unpack domain)
+        input_email = "user@"
+        result = parse_email(input_email)
+        assert result.ok is False
+
+    def test_domain_without_dot_returns_invalid_format(self):
+        # From Idris: domainHasDot : Elem '.' (unpack domain)
+        input_email = "user@localhost"
+        result = parse_email(input_email)
+        assert result.ok is False
+```
+
+### 3.2 Write Happy Path Tests
+
+```python
+class TestParseEmailSuccess:
+    """Success cases from Idris Email type."""
+
+    def test_valid_simple_email(self):
+        input_email = "user@example.com"
+        result = parse_email(input_email)
+        assert result.ok is True
+        assert result.value.local_part == "user"
+        assert result.value.domain == "example.com"
+
+    def test_valid_subdomain_email(self):
+        input_email = "user@mail.example.co.uk"
+        result = parse_email(input_email)
+        assert result.ok is True
+
+    def test_valid_plus_addressing(self):
+        input_email = "user+tag@example.com"
+        result = parse_email(input_email)
+        assert result.ok is True
+        assert result.value.local_part == "user+tag"
+```
+
+### 3.3 Write Edge Case Tests
+
+```python
+class TestParseEmailEdgeCases:
+    """Edge cases from RFC 5321 constraints."""
+
+    def test_max_length_local_part(self):
+        # RFC 5321: max 64 characters
+        long_local = "a" * 64
+        input_email = f"{long_local}@example.com"
+        result = parse_email(input_email)
+        assert result.ok is True
+
+    def test_exceeds_max_local_part_fails(self):
+        long_local = "a" * 65
+        input_email = f"{long_local}@example.com"
+        result = parse_email(input_email)
+        assert result.ok is False
+        assert result.error.kind == 'out_of_range'
+
+    def test_unicode_domain(self):
+        input_email = "user@example.com"
+        result = parse_email(input_email)
+        # Behavior depends on requirements
+```
+
+### 3.4 VALIDATION GATE: All Tests RED
+
+```bash
+pytest tests/ --tb=short -v
+# Expected: ALL TESTS FAIL (no implementation)
+
+# Verify failure is due to missing implementation
+pytest tests/ --tb=line 2>&1 | grep -c "FAILED"
+# Should equal total test count
+```
+
+---
+
+## PHASE 4: IMPLEMENTATION (GREEN State)
+
+### 4.1 Implement MINIMUM Code to Pass ONE Test
+
+```python
+# app.py
+from dataclasses import dataclass
+from typing import Union
+
+@dataclass
+class ValidationError:
+    kind: str
+    reason: str = ""
+    min_val: int = 0
+    max_val: int = 0
+    actual: int = 0
+
+@dataclass
+class Email:
+    local_part: str
+    domain: str
+
+@dataclass
+class Ok:
+    ok: bool = True
+    value: Email = None
+
+@dataclass
+class Err:
+    ok: bool = False
+    error: ValidationError = None
+
+Result = Union[Ok, Err]
+
+def parse_email(input_str: str) -> Result:
+    # Minimum to pass test_empty_input_returns_empty_input_error
+    if not input_str:
+        return Err(error=ValidationError(kind='empty_input'))
+
+    # Minimum to pass test_no_at_symbol
+    if '@' not in input_str:
+        return Err(error=ValidationError(kind='invalid_format', reason='missing @'))
+
+    # Continue for each test...
+    parts = input_str.split('@')
+
+    if len(parts) != 2:
+        return Err(error=ValidationError(kind='invalid_format', reason='multiple @'))
+
+    local_part, domain = parts
+
+    if not local_part:
+        return Err(error=ValidationError(kind='invalid_format', reason='empty local part'))
+
+    if not domain:
+        return Err(error=ValidationError(kind='invalid_format', reason='empty domain'))
+
+    if '.' not in domain:
+        return Err(error=ValidationError(kind='invalid_format', reason='domain needs dot'))
+
+    if len(local_part) > 64:
+        return Err(error=ValidationError(
+            kind='out_of_range',
+            min_val=1,
+            max_val=64,
+            actual=len(local_part)
+        ))
+
+    return Ok(value=Email(local_part=local_part, domain=domain))
+```
+
+### 4.2 Red-Green Cycle (30-120 seconds per test)
+
+```
+For each failing test:
+  1. Run tests -> Confirm RED (this test fails)
+  2. Write MINIMUM code to pass THIS test
+  3. Run tests -> Confirm GREEN (this test passes)
+  4. git add -p && git commit -m "test: pass {test_name}"
+  5. Next test
+```
+
+### 4.3 VALIDATION GATE: All Tests GREEN
+
+```bash
+pytest tests/ -v
+# Expected: ALL TESTS PASS
+
+npx vitest run
+# Expected: ALL TESTS PASS
+```
+
+---
+
+## PHASE 5: REFACTOR (Maintain GREEN)
+
+### 5.1 Refactor Rules
+
+1. Run tests BEFORE any refactoring -> must be GREEN
+2. Make ONE change at a time
+3. Run tests AFTER each change -> must stay GREEN
+4. If tests fail, REVERT immediately (`git checkout -- .`)
+
+### 5.2 Refactoring Opportunities
+
+- Extract methods for clarity
+- Remove duplication
+- Improve naming
+- Simplify conditionals
+- **DO NOT add features**
+
+### 5.3 VALIDATION GATE: Tests Still GREEN
+
+```bash
+pytest tests/ -v
+# Expected: ALL TESTS STILL PASS
+
+git diff --stat  # Review changes
+git add -p && git commit -m "refactor: improve clarity"
+```
+
+---
+
+## PHASE 6: COVERAGE VALIDATION
+
+### 6.1 Measure Coverage
+
+```bash
+# Python
+pytest --cov=src --cov-report=term-missing --cov-report=html tests/
+
+# TypeScript
+npx vitest run --coverage
+
+# Rust
+cargo tarpaulin --out Html
+```
+
+### 6.2 Coverage Requirements
+
+| Path Type | Minimum Coverage |
+|-----------|------------------|
+| Critical paths | 80%+ |
+| Error handlers | 100% |
+| Public API | 100% |
+| Edge cases | 90%+ |
+
+### 6.3 VALIDATION GATE: Coverage Met
+
+```bash
+pytest --cov=src --cov-fail-under=80 tests/
+# Expected: Coverage >= 80%
+```
+
+---
+
+## PHASE 7: MUTATION TESTING
+
+### 7.1 Run Mutation Tests
+
+```bash
+# Python
+pip install mutmut
+mutmut run --paths-to-mutate=src/
+
+# TypeScript
+npx stryker run
+
+# Rust
+cargo mutants
+```
+
+### 7.2 Analyze Surviving Mutants
+
+```bash
+mutmut results
+mutmut show <id>  # View surviving mutant
+```
+
+Surviving mutants indicate:
+- Missing test cases
+- Weak assertions
+- Untested branches
+
+### 7.3 VALIDATION GATE: Mutation Score
+
+```bash
+# Target: 70%+ mutation score
+mutmut run --paths-to-mutate=src/ 2>&1 | grep "Killed"
+```
+
+---
+
+## PHASE 8: FINAL VALIDATION
+
+```bash
+#!/bin/bash
+set -e
+
+echo "=== TDD FINAL VALIDATION ==="
+
+echo "[1/7] Idris 2 type specification..."
+idris2 --check Spec.idr
+
+echo "[2/7] Type checking implementation..."
+pyright src/
+# or: npx tsc --noEmit
+
+echo "[3/7] Unit tests (must be GREEN)..."
+pytest tests/ -v
+
+echo "[4/7] Property tests..."
+pytest tests/ --hypothesis-show-statistics -k property
+
+echo "[5/7] Coverage check..."
+pytest --cov=src --cov-fail-under=80 tests/
+
+echo "[6/7] Mutation testing..."
+mutmut run --paths-to-mutate=src/ --no-progress
+
+echo "[7/7] Lint and format..."
+ruff check src/
+ruff format --check src/
+
+echo "=== ALL VALIDATION GATES PASSED ==="
+```
+
+---
 
 ## TDD Anti-Patterns to Avoid
 
@@ -242,70 +615,83 @@ Never write production code without a failing test. Tests drive design. The Red-
 | **Mock Abuse** | Over-mocking hides bugs | Prefer real dependencies |
 | **Assertion Creep** | One test verifies 5+ things | Split into separate tests |
 | **Skip-to-Green** | Writing tests after code | Strict RED-first discipline |
-| **Coverage Theater** | Tests pass but don't verify | Meaningful assertions |
+| **Coverage Theater** | Tests pass but don't verify | Mutation testing |
 | **Refactor-on-Red** | Cleaning up with failing tests | Only refactor on GREEN |
+| **Type Neglect** | Not leveraging type system | Idris 2 specification first |
 
-## Quick Reference
+---
 
-**Test Frameworks:**
+## Quick Reference by Language
+
+### Python
 ```bash
-# Python
-pip install pytest pytest-cov hypothesis
-pytest tests/ -v --cov=src
+pip install pytest pytest-cov hypothesis mutmut pyright
+pytest tests/ -v --cov=src --hypothesis-show-statistics
+mutmut run
+```
 
-# TypeScript
-npm install -D vitest @vitest/coverage-v8
+### TypeScript
+```bash
+npm install -D vitest @vitest/coverage-v8 fast-check
 npx vitest run --coverage
+npx stryker run
+```
 
-# Rust
+### Rust
+```bash
+cargo add proptest --dev
 cargo test
 cargo tarpaulin --out Html
-
-# Go
-go test -v -cover ./...
+cargo mutants
 ```
 
-**Property-Based Testing:**
-```python
-# Python (Hypothesis)
-from hypothesis import given, strategies as st
-
-@given(st.integers(), st.integers())
-def test_addition_commutative(a, b):
-    assert a + b == b + a
+### Kotlin
+```bash
+# build.gradle.kts
+testImplementation("io.kotest:kotest-runner-junit5:5.9.0")
+testImplementation("io.kotest:kotest-property:5.9.0")
+./gradlew test jacocoTestReport
 ```
 
-```typescript
-// TypeScript (fast-check)
-import fc from 'fast-check';
+---
 
-test('addition is commutative', () => {
-  fc.assert(fc.property(fc.integer(), fc.integer(), (a, b) => {
-    return a + b === b + a;
-  }));
-});
-```
+## ODD Integration
+
+**Outline-as-Contract:**
+- Idris 2 types define the outline structure
+- Each type maps to one test suite
+- Each constructor maps to test cases
+- Deterministic: same types generate same test structure
+
+**Telemetry Feedback:**
+- Track test failures in CI
+- Measure coverage trends
+- Feed mutation results into test improvement
+
+---
 
 ## Required Output
 
-Provide:
-1. Type signatures (contracts)
-2. Property-based tests
-3. Unit tests (error cases first, then happy paths)
-4. Implementation passing all tests
-5. Coverage report showing 80%+
-6. Refactoring summary (what was improved)
+1. **Idris 2 Type Specification** (`Spec.idr`)
+2. **Property-Based Tests** (from type signatures)
+3. **Unit Tests** (error cases first, then happy paths)
+4. **Implementation** passing all tests
+5. **Coverage Report** showing 80%+
+6. **Mutation Report** showing 70%+ score
+7. **Refactoring Summary**
 
 ## Validation Gates Summary
 
 | Gate | Command | Must Pass |
 |------|---------|-----------|
-| Types | `tsc --noEmit / pyright` | Yes |
-| Tests RED | `pytest` (all fail) | Yes (before impl) |
-| Tests GREEN | `pytest` (all pass) | Yes (after impl) |
-| Refactor GREEN | `pytest` (still pass) | Yes |
-| Coverage | `pytest --cov-fail-under=80` | Yes |
-| Properties | `pytest --hypothesis` | Yes |
+| Types | `idris2 --check Spec.idr` | Yes |
+| Type Check | `pyright / tsc --noEmit` | Yes |
+| Tests RED | All fail before impl | Yes |
+| Tests GREEN | All pass after impl | Yes |
+| Refactor GREEN | Still pass after refactor | Yes |
+| Coverage | `--cov-fail-under=80` | Yes |
+| Properties | `--hypothesis-show-statistics` | Yes |
+| Mutations | 70%+ killed | Yes |
 
-CRITICAL: Never write implementation code without a failing test. The cycle is sacred: RED → GREEN → REFACTOR.
+CRITICAL: Never write implementation code without a failing test. The cycle is sacred: RED -> GREEN -> REFACTOR. Idris 2 types provide the specification that tests validate.
 """

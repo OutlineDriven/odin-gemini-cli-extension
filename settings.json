@@ -134,7 +134,6 @@
       "Shell(git commit --no-verify -m - - - -)"
     ]
   },
-  "data_collection_enabled": false,
   "privacy": {
     "usageStatisticsEnabled": false
   },
