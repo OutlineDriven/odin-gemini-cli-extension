@@ -1,51 +1,10 @@
 {
   "ide": {
-    "hasSeenNudge": true,
-    "enabled": true
+    "enabled": false,
+    "hasSeenNudge": true
   },
-  "mcpServers": {
-    "ast-grep": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/ast-grep/ast-grep-mcp",
-        "ast-grep-server"
-      ]
-    },
-    "context7": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "@upstash/context7-mcp@latest"
-      ]
-    },
-    "time": {
-      "command": "uvx",
-      "args": [
-        "mcp-server-time"
-      ]
-    },
-    "sequentialthinking-tools": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-sequentialthinking-tools"
-      ]
-    },
-    "actor-critic-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "mcp-server-actor-critic-thinking"
-      ]
-    },
-    "shannon-thinking": {
-      "command": "npx",
-      "args": [
-        "-y",
-        "server-shannon-thinking@latest"
-      ]
-    }
+  "model": {
+    "name": "pro"
   },
   "context": {
     "loadMemoryFromIncludeDirectories": true,
@@ -60,7 +19,7 @@
       "pager": "bat",
       "showColor": true
     },
-    "truncateToolOutputThreshold": 10000000,
+    "truncateToolOutputThreshold": 8000000,
     "truncateToolOutputLines": 5000,
     "enableMessageBusIntegration": true,
     "exclude": [
@@ -181,7 +140,8 @@
   },
   "security": {
     "folderTrust": {
-      "featureEnabled": true
+      "featureEnabled": true,
+      "enabled": true
     },
     "auth": {
       "selectedType": "oauth-personal"
@@ -192,11 +152,26 @@
     "hideTips": true,
     "hideBanner": true,
     "showCitations": true,
-    "showMemoryUsage": true
+    "showMemoryUsage": true,
+    "theme": "Google Code",
+    "footer": {
+      "hideContextPercentage": false
+    },
+    "showModelInfoInChat": true,
+    "accessibility": {
+      "disableLoadingPhrases": true
+    },
+    "showStatusInTitle": true,
+    "useAlternateBuffer": false
   },
   "general": {
     "enablePromptCompletion": true,
-    "previewFeatures": true,
-    "useModelRouter": false
+    "previewFeatures": true
+  },
+  "experimental": {
+    "codebaseInvestigatorSettings": {
+      "maxNumTurns": 20,
+      "enabled": false
+    }
   }
 }
