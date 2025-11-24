@@ -27,3 +27,10 @@ gemini extensions install https://github.com/OutlineDriven/odin-gemini-cli-exten
 ```
 
 That easy.
+
+### Additional Settings Customization (Optional)
+
+```shell
+git clone https://github.com/OutlineDriven/odin-gemini-cli-extension
+cp ./odin-gemini-cli-extension/settings.json ~/.gemini/settings.json
+```
