@@ -1,0 +1,215 @@
+description = "Plan HODD-RUST validation workflow for Rust projects merging Type-driven + Spec-first + Proof-driven + Design-by-contracts + Test-driven"
+
+prompt = """You are planning a HODD-RUST (Stronger Outline Driven Development For Rust) validation strategy. This is a READ-ONLY planning phase - do NOT modify any files.
+
+HODD-RUST merges five verification paradigms:
+- **Type-driven**: Rust's type system + Idris2/Flux for refined types
+- **Spec-first**: Quint specifications and Kani bounded model checking
+- **Proof-driven**: Lean4 formal proofs for critical algorithms
+- **Design-by-contracts**: Prusti pre/postconditions and invariants
+- **Test-driven (XP)**: Property-based testing with proptest/quickcheck
+
+## Constitutional Rules (Non-Negotiable)
+
+1. **READ-ONLY**: This is a planning phase only - no file modifications
+2. **Comprehensive Detection**: Find ALL existing validation artifacts before designing strategy
+3. **Safety-First**: Prioritize unsafe blocks, FFI, and concurrent code for verification
+4. **Tool Selection**: Match tools to code criticality - not everything needs formal proofs
+5. **External Tools Advisory**: Idris2/Lean4/Quint are for design validation outside main codebase
+
+## Planning Workflow
+
+### Phase 1: Detect Existing Validation Artifacts
+
+**Activities**:
+1. Find Prusti annotations:
+```bash
+rg '#\\[(requires|ensures|invariant)\\]' -t rust -l
+```
+
+2. Find Kani proofs:
+```bash
+rg '#\\[kani::proof\\]' -t rust -l
+```
+
+3. Find Flux refinements:
+```bash
+rg '#\\[flux::' -t rust -l
+```
+
+4. Find Loom tests:
+```bash
+rg 'loom::' -t rust -l
+```
+
+5. Find property tests:
+```bash
+rg 'proptest!|quickcheck' -t rust -l
+```
+
+6. Check test coverage:
+```bash
+fd -e rs -g '*test*' | wc -l
+cargo test --no-run 2>&1 | grep -c 'test'
+```
+
+**Deliverable**: Inventory of existing validation artifacts
+
+---
+
+### Phase 2: Analyze Safety Requirements
+
+**Activities**:
+1. Identify unsafe blocks:
+```bash
+rg 'unsafe\\s*\\{' -t rust -l
+rg 'unsafe\\s*\\{' -t rust -c  # Count per file
+```
+
+2. Find FFI boundaries:
+```bash
+rg 'extern\\s+"C"' -t rust -l
+rg '#\\[no_mangle\\]' -t rust -l
+```
+
+3. Locate concurrent code:
+```bash
+rg 'Arc<|Mutex<|RwLock<|AtomicU|AtomicI|AtomicBool' -t rust -l
+rg 'thread::spawn|tokio::spawn|async_std::spawn' -t rust -l
+rg 'crossbeam|rayon|parking_lot' -t rust -l
+```
+
+4. Detect panic paths:
+```bash
+rg '\\.unwrap\\(\\)|\\.expect\\(|panic!|unreachable!' -t rust -l
+```
+
+**Deliverable**: Safety analysis with file locations and counts
+
+---
+
+### Phase 3: Design Validation Strategy
+
+**Tool Selection Matrix**:
+
+| Code Criticality | Primary Tool | Secondary Tool | External |
+|------------------|--------------|----------------|----------|
+| Critical unsafe | Miri (local) | Manual review | Lean4 proof |
+| Concurrent | Loom | Property tests | Quint spec |
+| Algorithm | Kani | Prusti | Lean4 proof |
+| API contract | Prusti | Property tests | Idris2 types |
+| Data validation | Flux | Property tests | - |
+| Utility code | cargo test | Clippy | - |
+
+**Strategy Design**:
+1. Classify each file/module by criticality
+2. Map appropriate validation tools
+3. Identify gaps requiring additional annotations
+4. Plan external tool usage for complex algorithms
+
+**Deliverable**: Tool-to-code mapping document
+
+---
+
+### Phase 4: Identify Critical Files
+
+**Selection Criteria**:
+- Contains unsafe blocks
+- Handles concurrent access
+- Implements critical algorithms
+- Processes untrusted input
+- Has FFI boundaries
+
+**Analysis Commands**:
+```bash
+# Files with multiple safety concerns
+rg -l 'unsafe' -t rust | xargs -I {} sh -c 'echo "{}:"; rg -c "unsafe|Mutex|unwrap" {}'
+
+# Complexity indicators (function count)
+ast-grep -p 'fn $NAME($$$) { $$$ }' -l rust | head -20
+```
+
+**Deliverable**: List of 3-5 critical files with rationale
+
+---
+
+## Tool Stack Reference
+
+| Layer | Tool | Detect Pattern | Usage Notes |
+|-------|------|----------------|-------------|
+| 0 | rustc/clippy | Always | Standard validation |
+| 0 | cargo-audit/deny | Cargo.toml | Security, run in CI |
+| 1 | Miri | `unsafe {}` | Local debugging ONLY, not CI |
+| 2 | Loom | `loom::`, atomics | Critical concurrency code |
+| 3 | Typestate/Newtype | Type patterns | Compile-time safety |
+| 3 | Flux | `#[flux::]` | Refined types |
+| 4 | Prusti | `#[requires/ensures]` | Contract verification |
+| 5 | Lean4 | `lakefile.lean` | External proofs |
+| 6 | Kani | `#[kani::proof]` | Bounded model checking |
+| 6 | Quint | `*.qnt` | External protocol specs |
+| 6 | Verus | `verus!` | Verified Rust (external) |
+| 7 | Progenitor | OpenAPI spec | API generation |
+
+## External Tool Detection
+
+```bash
+# Idris2 type-driven models
+fd -e idr -e lidr
+
+# Lean4 formal proofs
+fd lakefile.lean
+fd -e lean
+
+# Quint specifications
+fd -e qnt
+
+# Verus annotations
+rg 'verus!' -t rust -l
+```
+
+## Exit Codes Reference
+
+| Code | Meaning |
+|------|---------|
+| 0 | Planning complete |
+| 11 | Rust toolchain not found |
+| 12 | No Rust files found |
+| 13 | Cannot determine project structure |
+
+## Required Output
+
+At the end of planning, deliver:
+
+1. **Validation Artifact Inventory**
+   - Existing Prusti/Kani/Flux/Loom annotations
+   - Property test coverage
+   - Test file count and structure
+
+2. **Safety Analysis**
+   - Unsafe block locations and count
+   - FFI boundary summary
+   - Concurrent code map
+   - Panic path analysis
+
+3. **Validation Strategy**
+   - Tool selection per code region
+   - Prioritized verification targets
+   - Annotation recommendations
+   - External tool usage plan
+
+4. **Critical Files List** (3-5 files)
+   - File path with rationale
+   - Applicable validation tools
+   - Existing vs missing coverage
+   - Verification priority
+
+## Key Principles
+
+1. **Comprehensive Before Prescriptive**: Detect everything before recommending tools
+2. **Safety Proportionality**: More critical code = more rigorous verification
+3. **Tool Appropriateness**: Not everything needs formal proofs
+4. **External Tool Separation**: Idris2/Lean4/Quint stay outside main codebase
+5. **Miri Advisory**: Document that Miri is for local debugging, not CI/CD
+
+Remember: This is READ-ONLY planning. Detect, analyze, design - do not execute validation.
+"""

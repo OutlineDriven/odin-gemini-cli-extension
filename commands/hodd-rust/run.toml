@@ -1,0 +1,377 @@
+description = "Execute HODD-RUST validation pipeline for Rust projects with comprehensive formal verification"
+
+prompt = """You are executing the HODD-RUST (Stronger Outline Driven Development For Rust) validation pipeline.
+
+HODD-RUST merges five verification paradigms into a unified validation workflow:
+- **Type-driven**: Rust's type system + Flux refined types
+- **Spec-first**: Kani bounded model checking
+- **Proof-driven**: Lean4 formal proofs (external)
+- **Design-by-contracts**: Prusti pre/postconditions
+- **Test-driven (XP)**: cargo test + property tests
+
+## Constitutional Rules (Non-Negotiable)
+
+1. **Complete All Tiers**: Execute basic through advanced validation in order
+2. **Fail-Fast**: Stop on critical failures (exit codes 11-14)
+3. **Formal Verification Conditional**: Only run Prusti/Kani/Flux if annotations present
+4. **Miri Advisory**: Document Miri is for local debugging only, not CI/CD
+5. **External Tools Optional**: Idris2/Lean4/Quint validation only if artifacts exist
+6. **Report Comprehensively**: Document every validation step's outcome
+
+## Execution Workflow
+
+### Phase 1: Environment Verification (CHECK)
+
+**Objective**: Verify Rust toolchain and project structure
+
+```bash
+# Verify Rust toolchain
+command -v rustc >/dev/null || { echo "ERROR: rustc not found"; exit 11; }
+command -v cargo >/dev/null || { echo "ERROR: cargo not found"; exit 11; }
+
+# Display versions
+rustc --version
+cargo --version
+
+# Verify project structure
+test -f Cargo.toml || { echo "ERROR: Cargo.toml not found"; exit 12; }
+
+echo "CHECK: Toolchain verified"
+```
+
+**Exit on failure**: Yes (blocking)
+
+---
+
+### Phase 2: Basic Validation (BASIC)
+
+**Objective**: Run standard Rust toolchain checks
+
+```bash
+# Format check
+echo "Running cargo fmt --check..."
+cargo fmt --check || { echo "ERROR: Format violations"; exit 12; }
+
+# Clippy with warnings as errors
+echo "Running cargo clippy..."
+cargo clippy -- -D warnings || { echo "ERROR: Clippy warnings"; exit 13; }
+
+# Security audit (if available)
+if command -v cargo-audit >/dev/null; then
+  echo "Running cargo audit..."
+  cargo audit || { echo "ERROR: Security vulnerabilities"; exit 14; }
+else
+  echo "SKIP: cargo-audit not installed"
+fi
+
+# Dependency policy (if available)
+if command -v cargo-deny >/dev/null; then
+  echo "Running cargo deny..."
+  cargo deny check || { echo "ERROR: Dependency policy violations"; exit 14; }
+else
+  echo "SKIP: cargo-deny not installed"
+fi
+
+echo "BASIC: All checks passed"
+```
+
+**Exit on failure**: Yes (blocking)
+
+---
+
+### Phase 3: Test Execution (TEST)
+
+**Objective**: Run cargo test suite with optional coverage
+
+```bash
+# Run tests
+echo "Running cargo test..."
+cargo test || { echo "ERROR: Tests failed"; exit 13; }
+
+# Coverage (if tarpaulin available)
+if command -v cargo-tarpaulin >/dev/null; then
+  echo "Running coverage analysis..."
+  cargo tarpaulin --out Html --output-dir target/coverage
+  echo "Coverage report: target/coverage/tarpaulin-report.html"
+else
+  echo "SKIP: cargo-tarpaulin not installed"
+fi
+
+echo "TEST: All tests passed"
+```
+
+**Exit on failure**: Yes (blocking)
+
+---
+
+### Phase 4: Contract Verification (CONTRACT)
+
+**Objective**: Run Prusti verification if annotations present
+
+```bash
+# Check for Prusti annotations
+if rg '#\\[(requires|ensures|invariant)\\]' -q -t rust; then
+  echo "Prusti annotations detected"
+
+  if command -v cargo-prusti >/dev/null; then
+    echo "Running Prusti verification..."
+    cargo prusti || { echo "ERROR: Prusti verification failed"; exit 15; }
+    echo "CONTRACT: Prusti verification passed"
+  else
+    echo "WARNING: Prusti not installed - skipping contract verification"
+  fi
+else
+  echo "SKIP: No Prusti annotations found"
+fi
+```
+
+**Exit on failure**: Yes (blocking if annotations present)
+
+---
+
+### Phase 5: Bounded Model Checking (SPEC)
+
+**Objective**: Run Kani proofs if present
+
+```bash
+# Check for Kani proofs
+if rg '#\\[kani::proof\\]' -q -t rust; then
+  echo "Kani proofs detected"
+
+  if command -v cargo-kani >/dev/null; then
+    echo "Running Kani verification..."
+    cargo kani || { echo "ERROR: Kani verification failed"; exit 15; }
+    echo "SPEC: Kani verification passed"
+  else
+    echo "WARNING: Kani not installed - skipping bounded model checking"
+  fi
+else
+  echo "SKIP: No Kani proofs found"
+fi
+
+# Check for Flux refinements
+if rg '#\\[flux::' -q -t rust; then
+  echo "Flux refinements detected"
+
+  if command -v flux >/dev/null; then
+    echo "Running Flux verification..."
+    flux check || { echo "ERROR: Flux verification failed"; exit 15; }
+    echo "SPEC: Flux verification passed"
+  else
+    echo "WARNING: Flux not installed - skipping refined type checking"
+  fi
+else
+  echo "SKIP: No Flux refinements found"
+fi
+```
+
+**Exit on failure**: Yes (blocking if proofs present)
+
+---
+
+### Phase 6: Concurrency Testing (CONCURRENCY)
+
+**Objective**: Run Loom tests for concurrent code
+
+```bash
+# Check for Loom tests
+if rg 'loom::' -q -t rust; then
+  echo "Loom tests detected"
+
+  echo "Running Loom tests..."
+  cargo test --features loom || { echo "ERROR: Loom tests failed"; exit 15; }
+  echo "CONCURRENCY: Loom tests passed"
+else
+  echo "SKIP: No Loom tests found"
+fi
+```
+
+**Exit on failure**: Yes (blocking if Loom tests present)
+
+---
+
+### Phase 7: Runtime UB Detection (RUNTIME - Advisory)
+
+**Objective**: Run Miri for undefined behavior detection
+
+**Important**: Miri is for LOCAL DEBUGGING ONLY, not recommended for CI/CD:
+- Requires nightly Rust
+- Significantly slower than normal tests
+- May have false positives with FFI
+- Best used during development for unsafe code review
+
+```bash
+# Check for unsafe blocks
+if rg 'unsafe\\s*\\{' -q -t rust; then
+  echo "Unsafe blocks detected - consider running Miri locally"
+  echo "ADVISORY: Miri is for local debugging only, not CI/CD"
+
+  # Uncomment for local debugging:
+  # rustup +nightly component add miri 2>/dev/null
+  # cargo +nightly miri test || { echo "WARNING: Miri found UB"; }
+
+  echo "RUNTIME: Miri check skipped (run manually for debugging)"
+else
+  echo "SKIP: No unsafe blocks found"
+fi
+```
+
+**Exit on failure**: No (advisory only)
+
+---
+
+### Phase 8: External Tool Validation (EXTERNAL - Optional)
+
+**Objective**: Validate external specifications if present
+
+```bash
+# Idris2 type models
+if fd -e idr -e lidr . proofs/ 2>/dev/null | head -1 | grep -q .; then
+  echo "Idris2 models detected"
+
+  if command -v idris2 >/dev/null; then
+    echo "Running Idris2 type check..."
+    idris2 --check proofs/*.idr || { echo "ERROR: Idris2 check failed"; exit 16; }
+    echo "EXTERNAL: Idris2 verification passed"
+  else
+    echo "WARNING: Idris2 not installed"
+  fi
+else
+  echo "SKIP: No Idris2 models found"
+fi
+
+# Lean4 formal proofs
+if fd lakefile.lean . proofs/ 2>/dev/null | head -1 | grep -q .; then
+  echo "Lean4 proofs detected"
+
+  if command -v lake >/dev/null; then
+    echo "Running Lean4 proofs..."
+    (cd proofs && lake build) || { echo "ERROR: Lean4 proofs failed"; exit 16; }
+
+    # Check for incomplete proofs
+    if rg 'sorry' proofs/*.lean 2>/dev/null; then
+      echo "ERROR: Incomplete proofs found (sorry placeholders)"
+      exit 16
+    fi
+    echo "EXTERNAL: Lean4 proofs verified"
+  else
+    echo "WARNING: Lake/Lean4 not installed"
+  fi
+else
+  echo "SKIP: No Lean4 proofs found"
+fi
+
+# Quint specifications
+if fd -e qnt . specs/ 2>/dev/null | head -1 | grep -q .; then
+  echo "Quint specifications detected"
+
+  if command -v quint >/dev/null; then
+    echo "Running Quint verification..."
+    quint typecheck specs/*.qnt || { echo "ERROR: Quint typecheck failed"; exit 16; }
+    quint verify specs/*.qnt || { echo "ERROR: Quint verification failed"; exit 16; }
+    echo "EXTERNAL: Quint verification passed"
+  else
+    echo "WARNING: Quint not installed"
+  fi
+else
+  echo "SKIP: No Quint specifications found"
+fi
+
+# Verus verified Rust
+if rg 'verus!' -q -t rust; then
+  echo "Verus annotations detected"
+
+  if command -v verus >/dev/null; then
+    echo "Running Verus verification..."
+    verus src/*.rs || { echo "ERROR: Verus verification failed"; exit 16; }
+    echo "EXTERNAL: Verus verification passed"
+  else
+    echo "WARNING: Verus not installed"
+  fi
+else
+  echo "SKIP: No Verus annotations found"
+fi
+
+echo "EXTERNAL: All external validations complete"
+```
+
+**Exit on failure**: Yes (blocking if external artifacts present)
+
+---
+
+## Exit Codes
+
+| Code | Meaning | Action |
+|------|---------|--------|
+| 0 | All validations pass | Proceed to deployment |
+| 11 | Toolchain missing | Install rustup/cargo |
+| 12 | Format/structure issues | Run `cargo fmt`, check Cargo.toml |
+| 13 | Clippy/test failures | Fix warnings and failing tests |
+| 14 | Security/dependency issues | Review cargo audit/deny findings |
+| 15 | Formal verification failed | Fix Prusti/Kani/Flux/Loom errors |
+| 16 | External tool failed | Fix Idris2/Lean4/Quint/Verus specs |
+
+## Validation Pipeline Diagram
+
+```
+CHECK (exit 11 if fail)
+  |
+  v
+BASIC: fmt -> clippy -> audit -> deny (exit 12-14 if fail)
+  |
+  v
+TEST: cargo test (exit 13 if fail)
+  |
+  +--[if #[requires/ensures]]---> CONTRACT: Prusti (exit 15 if fail)
+  |
+  +--[if #[kani::proof]]--------> SPEC: Kani (exit 15 if fail)
+  |
+  +--[if #[flux::]]-------------> SPEC: Flux (exit 15 if fail)
+  |
+  +--[if loom::]----------------> CONCURRENCY: Loom (exit 15 if fail)
+  |
+  +--[if unsafe, ADVISORY]------> RUNTIME: Miri (no exit, local only)
+  |
+  v
+EXTERNAL (optional, exit 16 if fail)
+  |
+  +--[if *.idr]-----------------> Idris2
+  +--[if lakefile.lean]---------> Lean4
+  +--[if *.qnt]-----------------> Quint
+  +--[if verus!]----------------> Verus
+  |
+  v
+COMPLETE (exit 0)
+```
+
+## Required Output
+
+1. **Validation Summary**
+   - Each tier: PASS / FAIL / SKIP
+   - Total checks: X passed, Y failed, Z skipped
+
+2. **Failure Details** (if any)
+   - File:line references
+   - Error messages
+   - Suggested fixes
+
+3. **Coverage Report** (if tarpaulin)
+   - Line coverage percentage
+   - Uncovered files
+
+4. **Formal Verification Status**
+   - Prusti: X contracts verified
+   - Kani: X proofs verified
+   - Flux: X refinements verified
+   - Loom: X concurrency tests passed
+
+5. **External Tools Status**
+   - Idris2/Lean4/Quint/Verus verification results
+
+6. **Recommendations**
+   - Unverified critical paths
+   - Missing annotations for unsafe code
+   - Suggested additional verification
+
+Execute the complete validation pipeline and report results comprehensively.
+"""
