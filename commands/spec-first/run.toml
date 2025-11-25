@@ -1,727 +1,266 @@
-description = "Spec-first development using Quint for formal specifications with model checking"
+description = "Execute spec-first development: CREATE Quint specs from plan, VERIFY with model checking, then IMPLEMENT"
 
-prompt = '''You are executing SPEC-FIRST DEVELOPMENT where Quint specifications are source-of-truth.
+prompt = '''You are executing SPEC-FIRST DEVELOPMENT. Your mission: CREATE the Quint specifications designed in the plan phase, VERIFY them through simulation and model checking, then IMPLEMENT target code that matches the verified spec.
 
-## Philosophy
+## Philosophy: Create Specs, Verify, Then Implement
 
-Formal specifications before code. **Quint is the primary tool** - a modern specification language from Informal Systems with TLA+ semantics, readable syntax, and Apalache model checking integration. Counterexamples reveal design flaws before any code is written.
+This is the EXECUTION phase. The plan phase designed state models, operations, and invariants. Now you:
+1. CREATE the Quint specification files
+2. VERIFY through simulation and model checking
+3. IMPLEMENT target code matching the spec
+4. VALIDATE correspondence through property tests
 
-## Tool Stack
+## Constitutional Rules (Non-Negotiable)
 
-| Component | Tool | Purpose |
-|-----------|------|---------|
-| **Specification** | Quint (v0.21+) | Formal spec language |
-| **Model Checking** | Apalache (v0.46+) | Bounded model checking |
-| **Simulation** | Quint REPL | Interactive exploration |
-| **Verification** | Quint verify | Property checking |
-| **Code Gen** | Manual translation | Spec-to-code mapping |
+1. **CREATE First**: Generate all Quint artifacts from plan design before verification
+2. **Model Check Before Implement**: No implementation until specs pass verification
+3. **Counterexamples Are Gifts**: They reveal design flaws before code exists
+4. **Spec-Code Correspondence**: Each Quint element maps to implementation code
+5. **Iterative Refinement**: Fix spec issues, don't skip verification
 
-## Installation
+## Execution Workflow
+
+### Phase 1: CREATE Validation Artifacts
+
+**Objective**: Generate Quint specification files from plan design
 
 ```bash
-# Quint CLI
-npm install -g @informalsystems/quint
+# Create specification directory
+mkdir -p .outline/specs
 
-# Apalache (for model checking)
-# Download from: https://github.com/informalsystems/apalache/releases
-# Or via coursier:
-cs install apalache
-
-# Verify installation
-quint --version  # Should be 0.21+
-apalache-mc version  # Should be 0.46+
+# Verify Quint installation
+quint --version  # Expect v0.21+
 ```
 
----
-
-## PHASE 1: REQUIREMENTS TO SPECIFICATION
-
-### 1.1 Analyze Requirements
-
-1. **Extract Core Entities**
-   - Identify state variables and their types
-   - Determine relationships between entities
-   - Define the state space
-
-2. **Identify Operations**
-   - What actions can modify state?
-   - What are the preconditions for each action?
-   - What postconditions must hold?
-
-3. **Define Properties**
-   - Safety: What must ALWAYS be true?
-   - Liveness: What must EVENTUALLY happen?
-   - Invariants: What constraints never break?
-
-### 1.2 Create Quint Specification
-
+**Create Type Definitions (from plan):**
 ```quint
-// account.qnt: Account management specification
+// .outline/specs/types.qnt
+// Types designed in plan phase
 
-module account {
-  // Type definitions
-  type AccountId = str
-  type Amount = int
-  type AccountStatus = Active | Frozen | Closed
+type EntityId = str
+type Amount = int
+type Status = Active | Inactive | Pending
 
-  // State structure
-  type AccountState = {
-    balance: int,
-    status: AccountStatus,
-    owner: str
-  }
+type Entity = {
+  id: EntityId,
+  value: Amount,
+  status: Status
+}
+```
 
-  // System state
-  var accounts: AccountId -> AccountState
+**Create State Model (from plan):**
+```quint
+// .outline/specs/state.qnt
+module state {
+  import types.*
 
-  // Constants with constraints
-  pure val MAX_BALANCE = 1000000
-  pure val MIN_BALANCE = 0
+  var entities: EntityId -> Entity
 
-  // ============================================
-  // INVARIANTS (Must ALWAYS hold)
-  // ============================================
-
-  /// All balances are non-negative
-  val balanceNonNegative = accounts.keys().forall(id =>
-    accounts.get(id).balance >= MIN_BALANCE
-  )
-
-  /// All balances are within limits
-  val balanceWithinLimits = accounts.keys().forall(id =>
-    accounts.get(id).balance <= MAX_BALANCE
-  )
-
-  /// Main invariant combining all safety properties
-  val inv = balanceNonNegative and balanceWithinLimits
-
-  // ============================================
-  // ACTIONS (State transitions)
-  // ============================================
-
-  /// Create a new account with initial balance
-  action createAccount(id: AccountId, owner: str, initial: Amount): bool = all {
-    // Preconditions
-    not(accounts.keys().contains(id)),
-    initial >= MIN_BALANCE,
-    initial <= MAX_BALANCE,
-    // State update
-    accounts' = accounts.put(id, {
-      balance: initial,
-      status: Active,
-      owner: owner
-    })
-  }
-
-  /// Withdraw amount from account
-  action withdraw(id: AccountId, amount: Amount): bool = all {
-    // Preconditions
-    accounts.keys().contains(id),
-    accounts.get(id).status == Active,
-    amount > 0,
-    amount <= accounts.get(id).balance,
-    // State update (postcondition encoded in update)
-    accounts' = accounts.set(id,
-      { ...accounts.get(id), balance: accounts.get(id).balance - amount }
-    )
-  }
-
-  /// Deposit amount to account
-  action deposit(id: AccountId, amount: Amount): bool = all {
-    // Preconditions
-    accounts.keys().contains(id),
-    accounts.get(id).status == Active,
-    amount > 0,
-    accounts.get(id).balance + amount <= MAX_BALANCE,
-    // State update
-    accounts' = accounts.set(id,
-      { ...accounts.get(id), balance: accounts.get(id).balance + amount }
-    )
-  }
-
-  /// Transfer between accounts
-  action transfer(from: AccountId, to: AccountId, amount: Amount): bool = all {
-    // Preconditions
-    from != to,
-    accounts.keys().contains(from),
-    accounts.keys().contains(to),
-    accounts.get(from).status == Active,
-    accounts.get(to).status == Active,
-    amount > 0,
-    amount <= accounts.get(from).balance,
-    accounts.get(to).balance + amount <= MAX_BALANCE,
-    // Atomic state update
-    accounts' = accounts
-      .set(from, { ...accounts.get(from), balance: accounts.get(from).balance - amount })
-      .set(to, { ...accounts.get(to), balance: accounts.get(to).balance + amount })
-  }
-
-  // ============================================
-  // STATE MACHINE
-  // ============================================
-
-  /// Initial state
   action init = all {
-    accounts' = Map()
+    entities' = Map()
   }
+}
+```
 
-  /// Non-deterministic step (any valid action)
+**Create Operations (from plan):**
+```quint
+// .outline/specs/operations.qnt
+module operations {
+  import state.*
+
+  // [Operations designed in plan phase]
+  action operation_name(params): bool = all {
+    // Preconditions
+    [precondition_1],
+    [precondition_2],
+    // State update
+    entities' = entities.set(...)
+  }
+}
+```
+
+**Create Invariants (from plan):**
+```quint
+// .outline/specs/invariants.qnt
+module invariants {
+  import state.*
+
+  // [Invariants designed in plan phase]
+  val invariant_name: bool =
+    entities.keys().forall(id => [property])
+
+  val allInvariants = invariant_name and [other_invariants]
+}
+```
+
+**Create Main Module:**
+```quint
+// .outline/specs/main.qnt
+module main {
+  import types.*
+  import state.*
+  import operations.*
+  import invariants.*
+
   action step = any {
-    nondet id = accounts.keys().oneOf()
+    nondet id = entities.keys().oneOf()
     nondet amount = 1.to(100).oneOf()
-    nondet owner = Set("alice", "bob", "charlie").oneOf()
     any {
-      createAccount(id, owner, amount),
-      withdraw(id, amount),
-      deposit(id, amount),
-      // For transfer, need two accounts
-      nondet to = accounts.keys().oneOf()
-      transfer(id, to, amount)
+      operation_1(id, amount),
+      operation_2(id, amount),
+      // ...
     }
   }
 }
 ```
 
-### 1.3 VALIDATION GATE: Spec Parses
+### Phase 2: EXECUTE Verification
 
+**Objective**: Verify specifications through simulation and model checking
+
+**Step 1: Type Check**
 ```bash
-# Parse and typecheck the specification
-quint typecheck account.qnt
+quint typecheck .outline/specs/main.qnt
+# Expected: [ok] No errors found
 ```
 
-**Expected Output:**
-```
-[ok] No errors found
-```
-
----
-
-## PHASE 2: SPECIFICATION VALIDATION
-
-### 2.1 REPL Exploration
-
+**Step 2: REPL Exploration**
 ```bash
 # Start interactive REPL
-quint -r account.qnt::account
+quint -r .outline/specs/main.qnt::main
 
 # In REPL:
 >>> init
->>> createAccount("acc1", "alice", 100)
->>> accounts
->>> withdraw("acc1", 30)
->>> accounts.get("acc1").balance
->>> inv  # Check invariant
+>>> operation_1("id1", 100)
+>>> entities
+>>> allInvariants  # Should be true
 ```
 
-### 2.2 Run Simulations
-
+**Step 3: Random Simulation**
 ```bash
-# Generate random traces
-quint run --main=account --max-steps=20 account.qnt
+# Run simulation with invariant checking
+quint run --main=main --max-steps=100 --invariant=allInvariants .outline/specs/main.qnt
 
-# Run with specific seed for reproducibility
-quint run --main=account --max-steps=50 --seed=12345 account.qnt
-
-# Output execution trace
-quint run --main=account --max-steps=20 --out-itf=trace.itf.json account.qnt
+# Run multiple samples
+quint run --main=main --max-steps=50 --max-samples=10 .outline/specs/main.qnt
 ```
 
-### 2.3 VALIDATION GATE: Simulations Pass
-
+**Step 4: Model Checking (Apalache)**
 ```bash
-# Simulations should complete without invariant violations
-quint run --main=account --max-steps=100 --max-samples=10 account.qnt
+# Verify invariants with bounded model checking
+quint verify --main=main --invariant=allInvariants --max-steps=10 .outline/specs/main.qnt
+
+# Expected: [ok] No violation found
 ```
 
----
+### Phase 3: REMEDIATE (Fix Spec Issues)
 
-## PHASE 3: MODEL CHECKING
+**Objective**: Address any verification failures
 
-### 3.1 Define Temporal Properties
-
-```quint
-// properties.qnt: Temporal and safety properties
-
-module properties {
-  import account.*
-
-  // Safety: invariant always holds
-  temporal safetyProperty = always(inv)
-
-  // Conservation: total balance preserved in transfers
-  val totalBalance = accounts.keys().fold(0, (sum, id) =>
-    sum + accounts.get(id).balance
-  )
-
-  // For closed system (no create/deposit/withdraw), total is conserved
-  temporal conservationProperty = always(
-    totalBalance == totalBalance  // Simplified; real: track transfers only
-  )
-}
+**Remediation Loop:**
+```
+WHILE verification fails:
+  1. Analyze counterexample trace
+  2. Determine cause:
+     - Invariant too strong? -> Weaken invariant
+     - Missing precondition? -> Add precondition
+     - Incorrect state update? -> Fix operation
+  3. Update specification
+  4. Re-verify
 ```
 
-### 3.2 Run Apalache Model Checker
-
-```bash
-# Check invariant (bounded model checking)
-quint verify --main=account --invariant=inv account.qnt
-
-# Check with specific bounds
-quint verify --main=account --invariant=inv --max-steps=10 account.qnt
-
-# Verbose output for debugging
-quint verify --main=account --invariant=inv --verbosity=3 account.qnt
-```
-
-### 3.3 Analyze Counterexamples
-
-If verification fails, Quint provides a counterexample trace:
-
+**Counterexample Analysis:**
 ```bash
 # Output counterexample to file
-quint verify --main=account --invariant=inv --out-itf=counterexample.itf.json account.qnt
+quint verify --main=main --invariant=allInvariants --out-itf=counterexample.itf.json .outline/specs/main.qnt
 
-# View the trace
+# View trace
 cat counterexample.itf.json | jq '.states'
 ```
 
-**Interpreting Counterexamples:**
-1. Trace shows sequence of states
-2. Identify which action violated the invariant
-3. Determine if spec is wrong or invariant too strong
-4. Fix and re-verify
+### Phase 4: Implement Target Language Code
 
-### 3.4 VALIDATION GATE: All Properties Verified
+**Objective**: Create implementation matching verified specification
 
-```bash
-# Must pass with no counterexamples
-quint verify --main=account --invariant=inv account.qnt
-
-# Expected output:
-# [ok] No violation found (max_steps=10)
-```
-
----
-
-## PHASE 4: SPECIFICATION REFINEMENT
-
-### 4.1 Add Edge Cases
-
-```quint
-// Extend specification with edge cases
-
-/// Freeze account (admin action)
-action freezeAccount(id: AccountId): bool = all {
-  accounts.keys().contains(id),
-  accounts.get(id).status == Active,
-  accounts' = accounts.set(id,
-    { ...accounts.get(id), status: Frozen }
-  )
-}
-
-/// Close account (only if zero balance)
-action closeAccount(id: AccountId): bool = all {
-  accounts.keys().contains(id),
-  accounts.get(id).balance == 0,
-  accounts' = accounts.set(id,
-    { ...accounts.get(id), status: Closed }
-  )
-}
-
-// Additional invariants
-val noOperationsOnClosed = accounts.keys().forall(id =>
-  accounts.get(id).status == Closed implies accounts.get(id).balance == 0
-)
-```
-
-### 4.2 Test Specific Scenarios
-
-```quint
-// scenarios.qnt: Specific test scenarios
-
-module scenarios {
-  import account.*
-
-  /// Scenario: Multiple withdrawals depleting account
-  run exhaustAccountTest = {
-    init
-      .then(createAccount("acc1", "alice", 100))
-      .then(withdraw("acc1", 30))
-      .then(withdraw("acc1", 30))
-      .then(withdraw("acc1", 30))
-      .then(withdraw("acc1", 10))
-      .then(all {
-        // Final balance should be zero
-        assert(accounts.get("acc1").balance == 0),
-        accounts' = accounts
-      })
-  }
-
-  /// Scenario: Transfer preserves total
-  run transferConservationTest = {
-    init
-      .then(createAccount("acc1", "alice", 100))
-      .then(createAccount("acc2", "bob", 50))
-      .then(val totalBefore = accounts.get("acc1").balance + accounts.get("acc2").balance
-        transfer("acc1", "acc2", 30)
-          .then(all {
-            val totalAfter = accounts.get("acc1").balance + accounts.get("acc2").balance
-            assert(totalAfter == totalBefore),
-            accounts' = accounts
-          })
-      )
-  }
-}
-```
-
-```bash
-# Run specific scenarios
-quint test --main=scenarios scenarios.qnt
-```
-
----
-
-## PHASE 5: IMPLEMENTATION
-
-### 5.1 Translation Strategy
-
-Map Quint constructs to target language:
+**Spec-to-Code Translation:**
 
 | Quint | TypeScript | Python | Rust |
 |-------|------------|--------|------|
-| `type T = ...` | `type T = ...` | `@dataclass T` | `struct T` |
-| `var x: T` | `let x: T` | `x: T` | `let mut x: T` |
-| `action f(...): bool` | `function f(...): Result` | `def f(...) -> Result` | `fn f(...) -> Result` |
+| `type T = {...}` | `interface T` | `@dataclass T` | `struct T` |
+| `var x: T` | `let x: T` | `self.x: T` | `let mut x: T` |
+| `action f(...): bool` | `function f(): Result` | `def f() -> Result` | `fn f() -> Result` |
 | `all { cond, ... }` | `if (!cond) return Err` | `if not cond: raise` | `if !cond { return Err }` |
-| `x' = v` | `x = v` | `self.x = v` | `self.x = v` |
 
-### 5.2 TypeScript Implementation
-
+**Implementation with Spec Correspondence:**
 ```typescript
 // account.ts: Implementation from Quint spec
 
-import { z } from 'zod';
+/**
+ * Spec Correspondence:
+ * - Quint module: operations
+ * - Quint action: withdraw
+ * - Invariants: balanceNonNegative
+ */
+function withdraw(account: Account, amount: number): Result<number> {
+  // Preconditions (from Quint action)
+  if (amount <= 0) return { ok: false, error: 'Amount must be positive' };
+  if (amount > account.balance) return { ok: false, error: 'Insufficient funds' };
 
-// Types (from Quint type definitions)
-type AccountId = string;
-type Amount = number;
-type AccountStatus = 'Active' | 'Frozen' | 'Closed';
+  // State update (from Quint accounts' = ...)
+  account.balance -= amount;
 
-interface AccountState {
-  balance: number;
-  status: AccountStatus;
-  owner: string;
-}
+  // Postcondition (invariant check)
+  assert(account.balance >= 0, 'Invariant violated');
 
-// Constants (from Quint pure vals)
-const MAX_BALANCE = 1000000;
-const MIN_BALANCE = 0;
-
-// Validation schemas
-const AmountSchema = z.number().int().positive();
-const AccountIdSchema = z.string().min(1);
-
-// Result type for operations
-type Result<T, E = string> =
-  | { ok: true; value: T }
-  | { ok: false; error: E };
-
-class AccountSystem {
-  private accounts: Map<AccountId, AccountState> = new Map();
-
-  // Invariant check (from Quint inv)
-  private checkInvariant(): boolean {
-    for (const [_, account] of this.accounts) {
-      if (account.balance < MIN_BALANCE) return false;
-      if (account.balance > MAX_BALANCE) return false;
-    }
-    return true;
-  }
-
-  // Action: createAccount (from Quint action)
-  createAccount(id: AccountId, owner: string, initial: Amount): Result<void> {
-    // Preconditions (from Quint all { ... })
-    if (this.accounts.has(id)) {
-      return { ok: false, error: 'Account already exists' };
-    }
-    if (initial < MIN_BALANCE) {
-      return { ok: false, error: 'Initial balance below minimum' };
-    }
-    if (initial > MAX_BALANCE) {
-      return { ok: false, error: 'Initial balance above maximum' };
-    }
-
-    // State update (from Quint accounts' = ...)
-    this.accounts.set(id, {
-      balance: initial,
-      status: 'Active',
-      owner: owner,
-    });
-
-    // Postcondition: invariant holds
-    console.assert(this.checkInvariant(), 'Invariant violated after createAccount');
-
-    return { ok: true, value: undefined };
-  }
-
-  // Action: withdraw (from Quint action)
-  withdraw(id: AccountId, amount: Amount): Result<number> {
-    // Preconditions
-    const account = this.accounts.get(id);
-    if (!account) {
-      return { ok: false, error: 'Account not found' };
-    }
-    if (account.status !== 'Active') {
-      return { ok: false, error: 'Account not active' };
-    }
-    if (amount <= 0) {
-      return { ok: false, error: 'Amount must be positive' };
-    }
-    if (amount > account.balance) {
-      return { ok: false, error: 'Insufficient balance' };
-    }
-
-    // State update
-    account.balance -= amount;
-
-    // Postcondition
-    console.assert(this.checkInvariant(), 'Invariant violated after withdraw');
-
-    return { ok: true, value: amount };
-  }
-
-  // Action: transfer (from Quint action)
-  transfer(from: AccountId, to: AccountId, amount: Amount): Result<void> {
-    // Preconditions
-    if (from === to) {
-      return { ok: false, error: 'Cannot transfer to same account' };
-    }
-    const fromAccount = this.accounts.get(from);
-    const toAccount = this.accounts.get(to);
-    if (!fromAccount || !toAccount) {
-      return { ok: false, error: 'Account not found' };
-    }
-    if (fromAccount.status !== 'Active' || toAccount.status !== 'Active') {
-      return { ok: false, error: 'Both accounts must be active' };
-    }
-    if (amount <= 0) {
-      return { ok: false, error: 'Amount must be positive' };
-    }
-    if (amount > fromAccount.balance) {
-      return { ok: false, error: 'Insufficient balance' };
-    }
-    if (toAccount.balance + amount > MAX_BALANCE) {
-      return { ok: false, error: 'Would exceed maximum balance' };
-    }
-
-    // Atomic state update (both or neither)
-    const oldFromBalance = fromAccount.balance;
-    const oldToBalance = toAccount.balance;
-
-    fromAccount.balance -= amount;
-    toAccount.balance += amount;
-
-    // Postcondition: conservation
-    console.assert(
-      fromAccount.balance + toAccount.balance === oldFromBalance + oldToBalance,
-      'Conservation violated'
-    );
-    console.assert(this.checkInvariant(), 'Invariant violated after transfer');
-
-    return { ok: true, value: undefined };
-  }
+  return { ok: true, value: amount };
 }
 ```
 
-### 5.3 SPEC-CODE CORRESPONDENCE
-
-```markdown
-## Specification-Code Mapping
-
-| Quint Element | Code Element | File:Line |
-|---------------|--------------|-----------|
-| `type AccountState` | `interface AccountState` | account.ts:8 |
-| `val MAX_BALANCE` | `const MAX_BALANCE` | account.ts:15 |
-| `val balanceNonNegative` | `checkInvariant()` | account.ts:25 |
-| `action createAccount` | `createAccount()` | account.ts:33 |
-| `action withdraw` | `withdraw()` | account.ts:55 |
-| `action transfer` | `transfer()` | account.ts:80 |
-
-## Precondition Mapping
-
-| Quint Precondition | Code Guard |
-|--------------------|------------|
-| `not(accounts.keys().contains(id))` | `if (this.accounts.has(id))` |
-| `amount > 0` | `if (amount <= 0)` |
-| `amount <= accounts.get(id).balance` | `if (amount > account.balance)` |
-| `accounts.get(id).status == Active` | `if (account.status !== 'Active')` |
-```
-
----
-
-## PHASE 6: VERIFICATION
-
-### 6.1 Property-Based Tests
-
+**Property Tests from Spec:**
 ```typescript
-// account.test.ts
 import fc from 'fast-check';
-import { describe, it, expect } from 'vitest';
 
-describe('AccountSystem', () => {
-  // Property: Invariant always holds after any operation
-  it('maintains balance non-negative invariant', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 0, max: 1000 }),
-        fc.integer({ min: 1, max: 100 }),
-        (initial, withdrawAmount) => {
-          const system = new AccountSystem();
-          system.createAccount('acc1', 'alice', initial);
-          const result = system.withdraw('acc1', withdrawAmount);
-
-          if (result.ok) {
-            // If withdraw succeeded, balance should be non-negative
-            // (verified by internal assertion)
-            return true;
-          } else {
-            // If withdraw failed, it should be because of precondition
-            return withdrawAmount > initial || withdrawAmount <= 0;
-          }
-        }
-      )
-    );
-  });
-
-  // Property: Transfer conserves total balance
-  it('conserves total balance in transfers', () => {
-    fc.assert(
-      fc.property(
-        fc.integer({ min: 100, max: 500 }),
-        fc.integer({ min: 100, max: 500 }),
-        fc.integer({ min: 1, max: 100 }),
-        (balance1, balance2, transferAmount) => {
-          const system = new AccountSystem();
-          system.createAccount('acc1', 'alice', balance1);
-          system.createAccount('acc2', 'bob', balance2);
-
-          const totalBefore = balance1 + balance2;
-          const result = system.transfer('acc1', 'acc2', transferAmount);
-
-          // Total should be conserved regardless of success
-          // (checked internally via assertion)
-          return true;
-        }
-      )
-    );
-  });
-});
+// Property: Invariant always holds (from Quint val balanceNonNegative)
+fc.assert(
+  fc.property(fc.integer({ min: 0, max: 1000 }), fc.integer({ min: 1, max: 100 }),
+    (initial, amount) => {
+      const account = createAccount(initial);
+      const result = withdraw(account, amount);
+      // Invariant must hold regardless of success/failure
+      return account.balance >= 0;
+    }
+  )
+);
 ```
 
-### 6.2 VALIDATION GATE: All Tests Pass
+## Validation Gates
 
-```bash
-# Run full verification suite
-echo "=== SPEC-FIRST VALIDATION ==="
-
-# 1. Quint specification typecheck
-echo "[1/5] Typechecking Quint spec..."
-quint typecheck account.qnt
-
-# 2. Quint simulations
-echo "[2/5] Running simulations..."
-quint run --main=account --max-steps=50 --max-samples=10 account.qnt
-
-# 3. Quint model checking
-echo "[3/5] Verifying invariants..."
-quint verify --main=account --invariant=inv --max-steps=10 account.qnt
-
-# 4. Quint scenario tests
-echo "[4/5] Running scenario tests..."
-quint test --main=scenarios scenarios.qnt
-
-# 5. Implementation tests
-echo "[5/5] Running implementation tests..."
-npm test
-
-echo "=== ALL GATES PASSED ==="
-```
-
----
-
-## Quint Quick Reference
-
-**Commands:**
-```bash
-quint typecheck spec.qnt           # Type check
-quint run --main=mod spec.qnt      # Simulate
-quint test --main=mod spec.qnt     # Run tests
-quint verify --main=mod spec.qnt   # Model check
-quint -r spec.qnt::mod             # REPL
-```
-
-**Syntax:**
-```quint
-// Types
-type Status = Active | Frozen
-type Account = { balance: int, status: Status }
-
-// State variables
-var accounts: str -> Account
-
-// Pure values (constants)
-pure val MAX = 1000
-
-// Actions (state transitions)
-action withdraw(id: str, amount: int): bool = all {
-  amount > 0,                        // Precondition
-  amount <= accounts.get(id).balance,
-  accounts' = accounts.set(id, ...)  // State update
-}
-
-// Invariants
-val inv = accounts.keys().forall(id => ...)
-
-// Temporal properties
-temporal safety = always(inv)
-temporal liveness = eventually(condition)
-```
-
----
-
-## ODD Integration
-
-**Outline-as-Contract:**
-- Quint specification IS the outline
-- Each `action` maps to one implementation function
-- Each `val` (invariant) maps to validation code
-- Deterministic: same spec always generates same structure
-
-**Telemetry Feedback:**
-- Track invariant violations in production
-- Feed counterexamples back to spec refinement
-- Measure spec-code drift over time
-
----
+| Gate | Command | Pass Criteria | Blocking |
+|------|---------|---------------|----------|
+| Type Check | `quint typecheck` | No errors | Yes |
+| Simulation | `quint run --invariant=inv` | No violations | Yes |
+| Model Check | `quint verify --invariant=inv` | No counterexamples | Yes |
+| Target Build | `npm build` / `cargo build` | Success | Yes |
+| Property Tests | `npm test` / `cargo test` | All pass | Yes |
 
 ## Required Output
 
-1. **Quint Specification** (`.qnt` files)
-2. **Verification Output** (no counterexamples)
-3. **Implementation** with spec correspondence
-4. **Property-Based Tests** from spec properties
-5. **Spec-Code Mapping Document**
+1. **Quint Specification** - Complete in `.outline/specs/`
+2. **Verification Output** - `quint verify` success
+3. **Implementation** - With spec correspondence documented
+4. **Property Tests** - From spec properties
+5. **Spec-Code Mapping** - Which Quint element maps to which code
 
-## Validation Gates Summary
+## Exit Codes
 
-| Gate | Command | Must Pass |
-|------|---------|-----------|
-| Quint Parse | `quint typecheck spec.qnt` | Yes |
-| Simulation | `quint run --max-steps=50` | Yes |
-| Model Check | `quint verify --invariant=inv` | Yes |
-| Scenarios | `quint test` | Yes |
-| Implementation | `npm test / cargo test` | Yes |
-| Properties | `vitest --run` with fast-check | Yes |
+| Code | Meaning |
+|------|---------|
+| 0 | Spec verified, implementation complete |
+| 11 | Quint not installed |
+| 12 | Type check failed |
+| 13 | Simulation found violation |
+| 14 | Model check found counterexample |
+| 15 | Implementation failed |
 
-CRITICAL: Do not implement until Quint verification passes with no counterexamples. The specification is source-of-truth.
+Execute CREATE -> VERIFY -> REMEDIATE cycle until spec passes and implementation complete.
 '''

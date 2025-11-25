@@ -1,741 +1,276 @@
-description = "Unified validation-first development combining Type-Driven, Spec-First, Proof-Driven, Design-by-Contract, and Test-Driven with ODD integration"
+description = "Execute unified validation: CREATE all verification layers from plan, VERIFY each layer, then INTEGRATE"
 
-prompt = '''You are executing OUTLINE-STRONG DEVELOPMENT - a unified validation-first methodology combining all verification paradigms with Outline-Driven Development (ODD) principles for maximum correctness guarantees.
+prompt = '''You are executing OUTLINE-STRONG DEVELOPMENT - unified validation-first methodology. Your mission: CREATE validation artifacts for all five layers designed in the plan phase, VERIFY each layer passes, then INTEGRATE into cohesive implementation.
 
-## Philosophy
+## Philosophy: Defense in Depth Through Creation
 
-Multiple verification layers catch different classes of bugs. Types catch structural errors. Specs catch design flaws. Proofs guarantee invariants. Contracts enforce runtime boundaries. Tests validate behavior. **The outline is the contract** - a deterministic specification that drives all verification layers.
+This is the EXECUTION phase. The plan phase designed the complete verification stack. Now you:
+1. CREATE artifacts for all five layers
+2. VERIFY each layer independently
+3. INTEGRATE layers into target implementation
+4. VALIDATE cross-layer correspondence
 
 ## Verification Stack
 
 ```
-+------------------+--------------------+-------------------------+------------------+
-|     LAYER        |       TOOL         |    CATCHES              | ODD ROLE         |
-+------------------+--------------------+-------------------------+------------------+
-| 1. TYPES         | Idris 2 (v0.8.0+)  | Structural errors       | Outline skeleton |
-| 2. SPECS         | Quint (v0.21+)     | Design flaws            | Behavior model   |
-| 3. PROOFS        | Lean 4 (v4.25+)    | Invariant violations    | Correctness cert |
-| 4. CONTRACTS     | deal/contracts/GSL | Runtime violations      | Guard rails      |
-| 5. TESTS         | Hypothesis/fast-check | Behavioral bugs      | Validation       |
-+------------------+--------------------+-------------------------+------------------+
+Layer | Tool      | Creates           | Catches
+------|-----------|-------------------|------------------
+1     | Idris 2   | Type specs        | Structural errors
+2     | Quint     | State specs       | Design flaws
+3     | Lean 4    | Formal proofs     | Invariant violations
+4     | deal/etc  | Contract annotations | Runtime violations
+5     | pytest/etc| Test suites       | Behavioral bugs
 ```
 
-## ODD Principles
+## Constitutional Rules (Non-Negotiable)
 
-| Principle | Application |
-|-----------|-------------|
-| **Outline-as-Contract** | The 5-layer specification IS the outline |
-| **Deterministic Generation** | Same spec always produces same implementation structure |
-| **Telemetry Feedback** | Verification results feed back to spec refinement |
-| **Variance Measurement** | Target <2% structural variance between generations |
-| **Layer Correspondence** | Each layer maps 1:1 across the stack |
+1. **CREATE All Layers**: Generate artifacts for each layer from plan
+2. **VERIFY In Order**: Types -> Specs -> Proofs -> Contracts -> Tests
+3. **Layer Correspondence**: Explicit mapping between all layers
+4. **No Skipping**: Each layer gate must pass before next
+5. **Variance < 2%**: Outline-to-implementation deviation minimal
 
----
+## Execution Workflow
 
-## PHASE 1: OUTLINE SPECIFICATION
+### Phase 1: CREATE Layer 1 - Types (Idris 2)
 
-### 1.1 Requirements to Outline
+**Objective**: Generate type specifications from plan design
 
-Transform requirements into a structured outline:
-
-```markdown
-# Feature: Account Withdrawal
-
-## 1. Domain Types (Idris 2)
-- Account: { id: String, balance: Nat, status: Status }
-- Status: Active | Frozen | Closed
-- Positive: Nat with proof of > 0
-
-## 2. State Model (Quint)
-- State: Map[AccountId, Account]
-- Invariant: all balances >= 0
-- Actions: withdraw, deposit, transfer
-
-## 3. Proven Properties (Lean 4)
-- withdraw_preserves_invariant
-- transfer_conserves_total
-- deposit_increases_balance
-
-## 4. Contracts
-- PRE: amount > 0, amount <= balance, status == Active
-- POST: balance' == balance - amount
-- INV: balance >= 0
-
-## 5. Test Cases
-- Error: negative amount, insufficient funds, frozen account
-- Success: valid withdrawal, exact deduction
-- Edge: zero balance after, max withdrawal
+```bash
+mkdir -p .outline/proofs
+cd .outline/proofs && pack new ProjectTypes
 ```
-
-### 1.2 Define Types in Idris 2 (Layer 1)
 
 ```idris
--- Outline.idr: Type-level outline
-
-module Outline
-
-import Data.Nat
-
--- Domain types encode constraints
-public export
-data AccountStatus = Active | Frozen | Closed
+-- .outline/proofs/src/Types.idr
+-- From plan: Type definitions
 
 public export
 data Positive : Nat -> Type where
-  MkPositive : (n : Nat) -> {auto prf : LTE 1 n} -> Positive n
+  MkPositive : Positive (S n)
 
 public export
 record Account where
   constructor MkAccount
-  accountId : String
-  balance : Nat
+  balance : Nat  -- Non-negative by construction
   status : AccountStatus
-
--- Operation signatures are the outline contract
-public export
-interface AccountOps where
-  -- Each signature defines the contract
-  withdraw : (acc : Account) ->
-             (amount : Positive n) ->
-             {auto prf : LTE n (balance acc)} ->
-             Account
-
-  deposit : (acc : Account) ->
-            (amount : Positive n) ->
-            Account
-
-  transfer : (from : Account) ->
-             (to : Account) ->
-             (amount : Positive n) ->
-             {auto prf : LTE n (balance from)} ->
-             (Account, Account)
-
--- Type-level invariant
-public export
-data ValidAccount : Account -> Type where
-  IsValid : (acc : Account) -> ValidAccount acc
 ```
 
-### 1.3 Write Behavioral Model in Quint (Layer 2)
+**Verify Layer 1:**
+```bash
+idris2 --check .outline/proofs/src/*.idr
+idris2 --total --check .outline/proofs/src/*.idr
+```
+
+### Phase 2: CREATE Layer 2 - Specs (Quint)
+
+**Objective**: Generate behavioral specifications from plan design
+
+```bash
+mkdir -p .outline/specs
+```
 
 ```quint
-// model.qnt: Behavioral specification
+// .outline/specs/model.qnt
+// From plan: State model and invariants
 
 module account {
-  type AccountId = str
-  type Amount = int
-  type Status = Active | Frozen | Closed
+  type Account = { balance: int, status: Status }
+  var accounts: str -> Account
 
-  type Account = {
-    id: AccountId,
-    balance: int,
-    status: Status
-  }
-
-  var accounts: AccountId -> Account
-
-  // ============================================
-  // OUTLINE INVARIANTS (from section 2)
-  // ============================================
-
+  // Invariant from plan
   val inv_balanceNonNegative = accounts.keys().forall(id =>
     accounts.get(id).balance >= 0
   )
 
-  val inv_statusValid = accounts.keys().forall(id =>
-    accounts.get(id).status.in(Set(Active, Frozen, Closed))
-  )
-
-  val inv = inv_balanceNonNegative and inv_statusValid
-
-  // ============================================
-  // OUTLINE ACTIONS (from section 2)
-  // ============================================
-
-  /// Withdraw: corresponds to Idris withdraw signature
-  action withdraw(id: AccountId, amount: Amount): bool = all {
-    // Preconditions (from outline section 4)
+  // Actions from plan
+  action withdraw(id: str, amount: int): bool = all {
     amount > 0,
-    accounts.keys().contains(id),
-    accounts.get(id).status == Active,
     amount <= accounts.get(id).balance,
-    // State update (postcondition)
-    accounts' = accounts.set(id, {
-      ...accounts.get(id),
-      balance: accounts.get(id).balance - amount
-    })
-  }
-
-  /// Deposit: corresponds to Idris deposit signature
-  action deposit(id: AccountId, amount: Amount): bool = all {
-    amount > 0,
-    accounts.keys().contains(id),
-    accounts.get(id).status == Active,
-    accounts' = accounts.set(id, {
-      ...accounts.get(id),
-      balance: accounts.get(id).balance + amount
-    })
-  }
-
-  /// Transfer: corresponds to Idris transfer signature
-  action transfer(from: AccountId, to: AccountId, amount: Amount): bool = all {
-    from != to,
-    amount > 0,
-    accounts.keys().contains(from),
-    accounts.keys().contains(to),
-    accounts.get(from).status == Active,
-    accounts.get(to).status == Active,
-    amount <= accounts.get(from).balance,
-    accounts' = accounts
-      .set(from, { ...accounts.get(from), balance: accounts.get(from).balance - amount })
-      .set(to, { ...accounts.get(to), balance: accounts.get(to).balance + amount })
-  }
-
-  action init = accounts' = Map()
-
-  action step = any {
-    nondet id = accounts.keys().oneOf()
-    nondet amount = 1.to(100).oneOf()
-    any { withdraw(id, amount), deposit(id, amount) }
+    accounts' = accounts.set(id, {...})
   }
 }
 ```
 
-### 1.4 Prove Properties in Lean 4 (Layer 3)
+**Verify Layer 2:**
+```bash
+quint typecheck .outline/specs/model.qnt
+quint verify --main=account --invariant=inv_balanceNonNegative .outline/specs/model.qnt
+```
+
+### Phase 3: CREATE Layer 3 - Proofs (Lean 4)
+
+**Objective**: Generate formal proofs from plan design
+
+```bash
+mkdir -p .outline/proofs/lean
+cd .outline/proofs/lean && lake new ProjectProofs
+```
 
 ```lean
--- Proofs.lean: Formal verification
+-- .outline/proofs/lean/ProjectProofs/Basic.lean
+-- From plan: Theorem statements
 
 namespace Account
 
-structure Account where
-  id : String
-  balance : Nat
-  status : AccountStatus
-  inv : balance >= 0 := by decide
-
--- Theorem: withdraw preserves invariant (from outline section 3)
 theorem withdraw_preserves_invariant
-    (acc : Account)
-    (amount : Nat)
+    (balance : Nat) (amount : Nat)
     (h_pos : amount > 0)
-    (h_suff : amount <= acc.balance) :
-    (acc.balance - amount) >= 0 := by
+    (h_suff : amount <= balance) :
+    (balance - amount) >= 0 := by
   omega
 
--- Theorem: transfer conserves total (from outline section 3)
 theorem transfer_conserves_total
-    (from to : Account)
-    (amount : Nat)
-    (h_suff : amount <= from.balance) :
-    (from.balance - amount) + (to.balance + amount) =
-    from.balance + to.balance := by
-  omega
-
--- Theorem: deposit increases balance (from outline section 3)
-theorem deposit_increases_balance
-    (acc : Account)
-    (amount : Nat)
-    (h_pos : amount > 0) :
-    acc.balance + amount > acc.balance := by
+    (b1 b2 : Nat) (amount : Nat)
+    (h_suff : amount <= b1) :
+    (b1 - amount) + (b2 + amount) = b1 + b2 := by
   omega
 
 end Account
 ```
 
-### 1.5 VALIDATION GATE: Outline Verified
-
+**Verify Layer 3:**
 ```bash
-#!/bin/bash
-echo "=== OUTLINE VERIFICATION ==="
-
-echo "[1/3] Idris 2 types..."
-idris2 --check Outline.idr
-
-echo "[2/3] Quint model..."
-quint typecheck model.qnt
-quint verify --main=account --invariant=inv model.qnt
-
-echo "[3/3] Lean 4 proofs..."
-lake build
-
-echo "=== OUTLINE VERIFIED ==="
+cd .outline/proofs/lean && lake build
+rg "sorry" .outline/proofs/lean/*.lean | wc -l  # Must be 0
 ```
 
----
+### Phase 4: CREATE Layer 4 - Contracts
 
-## PHASE 2: IMPLEMENTATION WITH CONTRACTS (Layer 4)
-
-### 2.1 Python Implementation
+**Objective**: Generate contract annotations from plan design
 
 ```python
-# account.py: Implementation with contracts
+# src/account.py
+# From plan: Contract specifications
 
 import deal
-from dataclasses import dataclass
-from enum import Enum
-from typing import Tuple
 
-class AccountStatus(Enum):
-    ACTIVE = "active"
-    FROZEN = "frozen"
-    CLOSED = "closed"
-
-@deal.inv(lambda self: self.balance >= 0, message="INV: balance >= 0")
-@dataclass
+@deal.inv(lambda self: self.balance >= 0)  # From INV-1
 class Account:
-    """
-    Outline Correspondence:
-    - Idris: record Account (balance : Nat)
-    - Quint: type Account = { balance: int, ... }
-    - Lean: structure Account where balance : Nat
-    """
-    id: str
-    balance: int
-    status: AccountStatus = AccountStatus.ACTIVE
-
-    @deal.pre(lambda self, amount: amount > 0, message="PRE: amount > 0")
-    @deal.pre(lambda self, amount: amount <= self.balance, message="PRE: amount <= balance")
-    @deal.pre(lambda self: self.status == AccountStatus.ACTIVE, message="PRE: status == Active")
-    @deal.post(lambda result: result > 0, message="POST: result > 0")
-    @deal.ensure(
-        lambda self, amount, result: self.balance == deal.old(self.balance) - amount,
-        message="POST: balance' == balance - amount"
-    )
+    @deal.pre(lambda self, amount: amount > 0)  # From PRE-1
+    @deal.pre(lambda self, amount: amount <= self.balance)  # From PRE-2
+    @deal.ensure(lambda self, amount, result:
+        self.balance == deal.old(self.balance) - amount)  # From POST-1
     def withdraw(self, amount: int) -> int:
-        """
-        Outline Correspondence:
-        - Idris: withdraw : Account -> Positive n -> {LTE n balance} -> Account
-        - Quint: action withdraw(id, amount) = all { ... }
-        - Lean: theorem withdraw_preserves_invariant
-        - Contract: PRE/POST from outline section 4
-        """
         self.balance -= amount
         return amount
-
-    @deal.pre(lambda self, amount: amount > 0)
-    @deal.pre(lambda self: self.status == AccountStatus.ACTIVE)
-    @deal.ensure(lambda self, amount, result: self.balance == deal.old(self.balance) + amount)
-    def deposit(self, amount: int) -> None:
-        """
-        Outline Correspondence:
-        - Idris: deposit : Account -> Positive n -> Account
-        - Quint: action deposit(id, amount) = all { ... }
-        - Lean: theorem deposit_increases_balance
-        """
-        self.balance += amount
-
-
-def transfer(from_acc: Account, to_acc: Account, amount: int) -> Tuple[Account, Account]:
-    """
-    Outline Correspondence:
-    - Idris: transfer : Account -> Account -> Positive n -> (Account, Account)
-    - Quint: action transfer(from, to, amount)
-    - Lean: theorem transfer_conserves_total
-    """
-    # Preconditions
-    deal.pre(lambda: amount > 0)()
-    deal.pre(lambda: amount <= from_acc.balance)()
-    deal.pre(lambda: from_acc.status == AccountStatus.ACTIVE)()
-    deal.pre(lambda: to_acc.status == AccountStatus.ACTIVE)()
-
-    # Conservation check (from Lean proof)
-    total_before = from_acc.balance + to_acc.balance
-
-    # Implementation
-    from_acc.balance -= amount
-    to_acc.balance += amount
-
-    # Postcondition: conservation (matches Lean theorem)
-    total_after = from_acc.balance + to_acc.balance
-    assert total_after == total_before, "Conservation violated (Lean: transfer_conserves_total)"
-
-    return (from_acc, to_acc)
 ```
 
-### 2.2 CORRESPONDENCE TABLE
+**Verify Layer 4:**
+```bash
+deal lint src/
+pyright src/
+```
 
+### Phase 5: CREATE Layer 5 - Tests
+
+**Objective**: Generate test suites from plan design
+
+```python
+# tests/test_account.py
+# From plan: Test scenarios
+
+from hypothesis import given, strategies as st
+
+class TestFromPlan:
+    """Tests from outline section 5"""
+
+    # Error cases (Priority 1)
+    def test_negative_amount_rejected(self):
+        """From plan: Error case 1"""
+        with pytest.raises(deal.PreContractError):
+            Account(100).withdraw(-50)
+
+    # Property tests (from Lean proofs)
+    @given(st.integers(min_value=0, max_value=10000),
+           st.integers(min_value=1, max_value=100))
+    def test_withdraw_preserves_invariant(self, balance, amount):
+        """Validates Lean: withdraw_preserves_invariant"""
+        assume(amount <= balance)
+        acc = Account(balance)
+        acc.withdraw(amount)
+        assert acc.balance >= 0
+```
+
+**Verify Layer 5:**
+```bash
+pytest tests/ -v --hypothesis-show-statistics
+pytest --cov=src --cov-fail-under=80 tests/
+```
+
+### Phase 6: INTEGRATE and Verify Correspondence
+
+**Objective**: Ensure all layers are aligned
+
+**Correspondence Matrix Verification:**
 ```markdown
-## Outline-to-Code Correspondence
-
-| Outline Element | Idris 2 | Quint | Lean 4 | Python |
-|-----------------|---------|-------|--------|--------|
-| Account type | `record Account` | `type Account` | `structure Account` | `@dataclass Account` |
-| balance >= 0 | `balance : Nat` | `inv_balanceNonNegative` | `inv : balance >= 0` | `@deal.inv(balance >= 0)` |
-| amount > 0 | `Positive n` | `amount > 0` | `h_pos : amount > 0` | `@deal.pre(amount > 0)` |
-| amount <= balance | `LTE n balance` | `amount <= balance` | `h_suff : amount <= balance` | `@deal.pre(amount <= balance)` |
-| withdraw | `withdraw : ...` | `action withdraw` | `withdraw_preserves` | `def withdraw(...)` |
-| transfer conserves | (implicit) | (implicit) | `transfer_conserves_total` | `assert total == total` |
+| Property | Idris | Quint | Lean | Contract | Test |
+|----------|-------|-------|------|----------|------|
+| balance >= 0 | Nat | inv_balance | preserves_inv | @deal.inv | test_invariant |
+| amount > 0 | Positive | amount > 0 | h_pos | @deal.pre | test_negative |
+| amount <= bal | LTE | precondition | h_suff | @deal.pre | test_insufficient |
 ```
 
----
-
-## PHASE 3: TESTS (Layer 5)
-
-### 3.1 Property-Based Tests from Outline
-
-```python
-# test_properties.py
-from hypothesis import given, strategies as st, assume
-from hypothesis.stateful import RuleBasedStateMachine, rule, precondition
-
-class AccountStateMachine(RuleBasedStateMachine):
-    """
-    Stateful test matching Quint model.
-    Each rule corresponds to a Quint action.
-    """
-
-    def __init__(self):
-        super().__init__()
-        self.balance = 0
-        self.status = "active"
-
-    # From Quint: action deposit
-    @rule(amount=st.integers(min_value=1, max_value=1000))
-    @precondition(lambda self: self.status == "active")
-    def deposit(self, amount):
-        """Corresponds to Quint action deposit."""
-        old_balance = self.balance
-        self.balance += amount
-        # Lean: deposit_increases_balance
-        assert self.balance > old_balance
-        # Quint: inv_balanceNonNegative
-        assert self.balance >= 0
-
-    # From Quint: action withdraw
-    @rule(amount=st.integers(min_value=1, max_value=100))
-    @precondition(lambda self: self.status == "active" and self.balance > 0)
-    def withdraw(self, amount):
-        """Corresponds to Quint action withdraw."""
-        assume(amount <= self.balance)
-        old_balance = self.balance
-        self.balance -= amount
-        # Lean: withdraw_preserves_invariant
-        assert self.balance >= 0
-        assert self.balance == old_balance - amount
-
-    # Invariant check (from Quint inv)
-    @rule()
-    def check_invariant(self):
-        """Quint: val inv = inv_balanceNonNegative."""
-        assert self.balance >= 0
-
-TestAccountStateMachine = AccountStateMachine.TestCase
-
-
-@given(
-    balance1=st.integers(min_value=100, max_value=1000),
-    balance2=st.integers(min_value=100, max_value=1000),
-    amount=st.integers(min_value=1, max_value=100)
-)
-def test_transfer_conserves_total(balance1, balance2, amount):
-    """
-    Property from Lean: transfer_conserves_total.
-    Total balance is conserved during transfers.
-    """
-    assume(amount <= balance1)
-
-    acc1 = Account(id="1", balance=balance1)
-    acc2 = Account(id="2", balance=balance2)
-
-    total_before = acc1.balance + acc2.balance
-    transfer(acc1, acc2, amount)
-    total_after = acc1.balance + acc2.balance
-
-    assert total_after == total_before
-```
-
-### 3.2 Unit Tests from Outline
-
-```python
-# test_unit.py
-import pytest
-from deal import PreContractError
-
-class TestWithdrawFromOutline:
-    """
-    Test cases from Outline Section 5:
-    - Error: negative amount, insufficient funds, frozen account
-    - Success: valid withdrawal, exact deduction
-    - Edge: zero balance after, max withdrawal
-    """
-
-    # Error cases
-    def test_negative_amount_raises(self):
-        """Outline 5.1: negative amount error."""
-        acc = Account(id="1", balance=100)
-        with pytest.raises(PreContractError, match="amount > 0"):
-            acc.withdraw(-50)
-
-    def test_insufficient_funds_raises(self):
-        """Outline 5.1: insufficient funds error."""
-        acc = Account(id="1", balance=100)
-        with pytest.raises(PreContractError, match="amount <= balance"):
-            acc.withdraw(150)
-
-    def test_frozen_account_raises(self):
-        """Outline 5.1: frozen account error."""
-        acc = Account(id="1", balance=100, status=AccountStatus.FROZEN)
-        with pytest.raises(PreContractError, match="status == Active"):
-            acc.withdraw(50)
-
-    # Success cases
-    def test_valid_withdrawal_succeeds(self):
-        """Outline 5.2: valid withdrawal."""
-        acc = Account(id="1", balance=100)
-        result = acc.withdraw(30)
-        assert result == 30
-        assert acc.balance == 70
-
-    def test_exact_deduction(self):
-        """Outline 5.2: exact deduction."""
-        acc = Account(id="1", balance=100)
-        acc.withdraw(30)
-        acc.withdraw(40)
-        assert acc.balance == 30
-
-    # Edge cases
-    def test_zero_balance_after(self):
-        """Outline 5.3: zero balance after withdrawal."""
-        acc = Account(id="1", balance=100)
-        acc.withdraw(100)
-        assert acc.balance == 0
-
-    def test_max_withdrawal(self):
-        """Outline 5.3: maximum possible withdrawal."""
-        acc = Account(id="1", balance=1000000)
-        acc.withdraw(1000000)
-        assert acc.balance == 0
-```
-
----
-
-## PHASE 4: INTEGRATION & VALIDATION
-
-### 4.1 Full Verification Script
-
+**Full Validation Pipeline:**
 ```bash
 #!/bin/bash
 set -e
 
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║           OUTLINE-STRONG VALIDATION PIPELINE                  ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
+echo "=== OUTLINE-STRONG VALIDATION ==="
 
-echo ""
-echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│ LAYER 1: TYPE SPECIFICATION (Idris 2)                        │"
-echo "└──────────────────────────────────────────────────────────────┘"
-idris2 --check Outline.idr
-echo "✓ Types verified"
+echo "[1/5] Layer 1: Types (Idris 2)..."
+idris2 --check .outline/proofs/src/*.idr
 
-echo ""
-echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│ LAYER 2: BEHAVIORAL MODEL (Quint)                            │"
-echo "└──────────────────────────────────────────────────────────────┘"
-quint typecheck model.qnt
-quint verify --main=account --invariant=inv --max-steps=10 model.qnt
-echo "✓ Model verified"
+echo "[2/5] Layer 2: Specs (Quint)..."
+quint typecheck .outline/specs/*.qnt
+quint verify --main=account --invariant=inv .outline/specs/*.qnt
 
-echo ""
-echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│ LAYER 3: FORMAL PROOFS (Lean 4)                              │"
-echo "└──────────────────────────────────────────────────────────────┘"
-cd proofs && lake build && cd ..
-echo "✓ Proofs complete (no sorry)"
+echo "[3/5] Layer 3: Proofs (Lean 4)..."
+cd .outline/proofs/lean && lake build && cd ../../..
+test $(rg "sorry" .outline/proofs/lean/*.lean 2>/dev/null | wc -l) -eq 0
 
-echo ""
-echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│ LAYER 4: CONTRACT ANALYSIS                                   │"
-echo "└──────────────────────────────────────────────────────────────┘"
-deal lint src/
-pyright src/
-echo "✓ Contracts verified"
-
-echo ""
-echo "┌──────────────────────────────────────────────────────────────┐"
-echo "│ LAYER 5: TESTS                                               │"
-echo "└──────────────────────────────────────────────────────────────┘"
-pytest tests/ -v --hypothesis-show-statistics
-pytest --cov=src --cov-fail-under=80 tests/
-echo "✓ Tests passed"
-
-echo ""
-echo "╔══════════════════════════════════════════════════════════════╗"
-echo "║           ALL 5 LAYERS VERIFIED                              ║"
-echo "╚══════════════════════════════════════════════════════════════╝"
-```
-
-### 4.2 Verification Alignment Matrix
-
-```markdown
-| Property | Idris 2 | Quint | Lean 4 | Contract | Test |
-|----------|---------|-------|--------|----------|------|
-| balance >= 0 | Nat | inv_balanceNonNegative | inv | @deal.inv | check_invariant |
-| amount > 0 | Positive | amount > 0 | h_pos | @deal.pre | test_negative_amount |
-| amount <= balance | LTE | amount <= balance | h_suff | @deal.pre | test_insufficient |
-| status == Active | (pattern) | status == Active | (match) | @deal.pre | test_frozen |
-| conserves total | (implicit) | (implicit) | transfer_conserves | assert | test_transfer_conserves |
-```
-
-### 4.3 ODD Telemetry
-
-```python
-# telemetry.py: ODD feedback collection
-
-from dataclasses import dataclass
-from datetime import datetime
-from typing import List, Dict
-import json
-
-@dataclass
-class VerificationResult:
-    layer: str  # "types", "specs", "proofs", "contracts", "tests"
-    passed: bool
-    timestamp: datetime
-    details: Dict
-
-@dataclass
-class OutlineDeviation:
-    expected: str  # From outline
-    actual: str    # From implementation
-    layer: str
-    severity: str  # "critical", "warning", "info"
-
-class ODDTelemetry:
-    def __init__(self):
-        self.results: List[VerificationResult] = []
-        self.deviations: List[OutlineDeviation] = []
-
-    def record_verification(self, layer: str, passed: bool, details: Dict = None):
-        self.results.append(VerificationResult(
-            layer=layer,
-            passed=passed,
-            timestamp=datetime.now(),
-            details=details or {}
-        ))
-
-    def record_deviation(self, expected: str, actual: str, layer: str, severity: str):
-        self.deviations.append(OutlineDeviation(
-            expected=expected,
-            actual=actual,
-            layer=layer,
-            severity=severity
-        ))
-
-    def compute_variance(self) -> float:
-        """
-        ODD Principle: Target <2% variance between outline and implementation.
-        """
-        if not self.deviations:
-            return 0.0
-        critical = sum(1 for d in self.deviations if d.severity == "critical")
-        warning = sum(1 for d in self.deviations if d.severity == "warning")
-        total_checks = len(self.results)
-        return ((critical * 1.0) + (warning * 0.5)) / max(total_checks, 1) * 100
-
-    def report(self) -> str:
-        variance = self.compute_variance()
-        status = "PASS" if variance < 2.0 else "FAIL"
-        return f"""
-ODD Telemetry Report
-====================
-Verification Results: {len(self.results)}
-  - Passed: {sum(1 for r in self.results if r.passed)}
-  - Failed: {sum(1 for r in self.results if not r.passed)}
-
-Deviations: {len(self.deviations)}
-  - Critical: {sum(1 for d in self.deviations if d.severity == 'critical')}
-  - Warning: {sum(1 for d in self.deviations if d.severity == 'warning')}
-  - Info: {sum(1 for d in self.deviations if d.severity == 'info')}
-
-Variance: {variance:.2f}% (Target: <2%)
-Status: {status}
-"""
-```
-
----
-
-## Layer Selection Guide
-
-| Scenario | Required Layers |
-|----------|-----------------|
-| Simple CRUD | Contracts + Tests (L4 + L5) |
-| Business logic | Types + Contracts + Tests (L1 + L4 + L5) |
-| Concurrent system | Specs + Proofs + Tests (L2 + L3 + L5) |
-| Safety-critical | ALL FIVE LAYERS |
-| Financial/Legal | ALL FIVE LAYERS + Audit Trail |
-
----
-
-## Quick Reference
-
-```bash
-# Layer 1: Idris 2
-idris2 --check Outline.idr
-idris2 --repl Outline.idr
-
-# Layer 2: Quint
-quint typecheck model.qnt
-quint verify --main=mod --invariant=inv model.qnt
-quint run --main=mod --max-steps=50 model.qnt
-
-# Layer 3: Lean 4
-lake build
-lean --run Main.lean
-
-# Layer 4: Contracts
+echo "[4/5] Layer 4: Contracts..."
 deal lint src/
 pyright src/
 
-# Layer 5: Tests
-pytest --hypothesis-show-statistics --cov=src tests/
+echo "[5/5] Layer 5: Tests..."
+pytest tests/ -v --cov=src --cov-fail-under=80
+
+echo "=== ALL 5 LAYERS VERIFIED ==="
 ```
 
----
+## Validation Gates
+
+| Gate | Layer | Command | Pass Criteria | Blocking |
+|------|-------|---------|---------------|----------|
+| Types | 1 | `idris2 --check` | No errors | Yes |
+| Specs | 2 | `quint verify` | No violations | Yes |
+| Proofs | 3 | `lake build` | Zero sorry | Yes |
+| Contracts | 4 | `deal lint` | No warnings | Yes |
+| Tests | 5 | `pytest --cov-fail-under=80` | All pass | Yes |
+| Correspondence | All | Manual review | Matrix complete | Yes |
 
 ## Required Output
 
-1. **Outline Document** - Structured specification across all 5 layers
-2. **Idris 2 Types** (`Outline.idr`) - Type-level outline
-3. **Quint Model** (`model.qnt`) - Behavioral specification
-4. **Lean 4 Proofs** (`Proofs.lean`) - Theorems with complete proofs
-5. **Implementation** - Target language with contracts
-6. **Tests** - Property-based and unit tests
-7. **Correspondence Table** - Outline-to-code mapping
-8. **Telemetry Report** - Variance < 2%
+1. **Layer 1 Artifacts** - `.outline/proofs/src/*.idr`
+2. **Layer 2 Artifacts** - `.outline/specs/*.qnt`
+3. **Layer 3 Artifacts** - `.outline/proofs/lean/*.lean`
+4. **Layer 4 Artifacts** - Annotated source code
+5. **Layer 5 Artifacts** - Test files
+6. **Correspondence Matrix** - All layers mapped
+7. **Validation Report** - All gates passed
 
-## Validation Gates Summary
+## Exit Codes
 
-| Layer | Gate | Command | Must Pass |
-|-------|------|---------|-----------|
-| 1 | Types | `idris2 --check` | Yes |
-| 2 | Specs | `quint verify` | Yes |
-| 3 | Proofs | `lake build` (no sorry) | Yes |
-| 4 | Contracts | `deal lint && pyright` | Yes |
-| 5 | Tests | `pytest --cov-fail-under=80` | Yes |
-| ODD | Variance | `< 2%` | Yes |
+| Code | Meaning |
+|------|---------|
+| 0 | All layers verified |
+| 11 | Layer 1 (Types) failed |
+| 12 | Layer 2 (Specs) failed |
+| 13 | Layer 3 (Proofs) failed |
+| 14 | Layer 4 (Contracts) failed |
+| 15 | Layer 5 (Tests) failed |
+| 16 | Correspondence incomplete |
 
-## Verification Correspondence Template
-
-```
-FUNCTION: [function_name]
-
-+------------------+----------------------+------------------------+------------------+
-| CONTRACT (L4)    | TYPE (L1 Idris 2)    | SPEC (L2 Quint)        | PROOF (L3 Lean)  |
-+------------------+----------------------+------------------------+------------------+
-| @pre(x > 0)      | Positive x           | x > 0                  | h_pos : x > 0    |
-| @pre(x <= y)     | LTE x y              | x <= y                 | h_bound : x <= y |
-| @post(r >= 0)    | Nat (return)         | r' >= 0                | preserves_inv    |
-| @inv(balance>=0) | balance : Nat        | inv_balanceNonNegative | inv : balance>=0 |
-+------------------+----------------------+------------------------+------------------+
-
-TEST CORRESPONDENCE (L5):
-- test_negative_amount -> validates @pre(x > 0)
-- test_insufficient -> validates @pre(x <= y)
-- test_invariant -> validates @inv(balance >= 0)
-- property_preserves -> validates Lean proof
-```
-
-CRITICAL: All five verification layers must pass before implementation is considered complete. Each layer catches different bug classes. The outline is the contract. Skipping any layer leaves vulnerabilities. Target <2% variance.
+Execute CREATE for each layer -> VERIFY each layer -> INTEGRATE with correspondence validation.
 '''
