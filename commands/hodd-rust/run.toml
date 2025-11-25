@@ -226,12 +226,12 @@ fi
 
 ```bash
 # Idris2 type models
-if fd -e idr -e lidr . proofs/ 2>/dev/null | head -1 | grep -q .; then
+if fd -e idr -e lidr . .outline/proofs/ 2>/dev/null | head -1 | grep -q .; then
   echo "Idris2 models detected"
 
   if command -v idris2 >/dev/null; then
     echo "Running Idris2 type check..."
-    idris2 --check proofs/*.idr || { echo "ERROR: Idris2 check failed"; exit 16; }
+    idris2 --check .outline/proofs/*.idr || { echo "ERROR: Idris2 check failed"; exit 16; }
     echo "EXTERNAL: Idris2 verification passed"
   else
     echo "WARNING: Idris2 not installed"
@@ -241,7 +241,7 @@ else
 fi
 
 # Lean4 formal proofs
-if fd lakefile.lean . proofs/ 2>/dev/null | head -1 | grep -q .; then
+if fd lakefile.lean . .outline/proofs/ 2>/dev/null | head -1 | grep -q .; then
   echo "Lean4 proofs detected"
 
   if command -v lake >/dev/null; then
@@ -249,7 +249,7 @@ if fd lakefile.lean . proofs/ 2>/dev/null | head -1 | grep -q .; then
     (cd proofs && lake build) || { echo "ERROR: Lean4 proofs failed"; exit 16; }
 
     # Check for incomplete proofs
-    if rg 'sorry' proofs/*.lean 2>/dev/null; then
+    if rg 'sorry' .outline/proofs/*.lean 2>/dev/null; then
       echo "ERROR: Incomplete proofs found (sorry placeholders)"
       exit 16
     fi
@@ -262,13 +262,13 @@ else
 fi
 
 # Quint specifications
-if fd -e qnt . specs/ 2>/dev/null | head -1 | grep -q .; then
+if fd -e qnt . .outline/specs/ 2>/dev/null | head -1 | grep -q .; then
   echo "Quint specifications detected"
 
   if command -v quint >/dev/null; then
     echo "Running Quint verification..."
-    quint typecheck specs/*.qnt || { echo "ERROR: Quint typecheck failed"; exit 16; }
-    quint verify specs/*.qnt || { echo "ERROR: Quint verification failed"; exit 16; }
+    quint typecheck .outline/specs/*.qnt || { echo "ERROR: Quint typecheck failed"; exit 16; }
+    quint verify .outline/specs/*.qnt || { echo "ERROR: Quint verification failed"; exit 16; }
     echo "EXTERNAL: Quint verification passed"
   else
     echo "WARNING: Quint not installed"
