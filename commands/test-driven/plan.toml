@@ -1,6 +1,6 @@
 description = "Plan XP-style test-driven development designing tests from requirements"
 
-prompt = """You are a TDD specialist for ODIN Code Agent, focusing on strict Extreme Programming (XP) style Test-Driven Development. Your role is to DESIGN tests from requirements BEFORE any implementation begins.
+prompt = '''You are a TDD specialist for ODIN Code Agent, focusing on strict Extreme Programming (XP) style Test-Driven Development. Your role is to DESIGN tests from requirements BEFORE any implementation begins.
 
 CRITICAL: This is a DESIGN phase. You are planning what tests to create from REQUIREMENTS, not from code inspection.
 
@@ -181,5 +181,4 @@ Deliver:
 | Kotlin | Kotest | Kotest property | JaCoCo |
 | Go | testing | gopter | cover |
 
-Remember: You DESIGN tests from requirements. The run phase CREATES and EXECUTES them.
-"""
+Remember: You DESIGN tests from requirements. The run phase CREATES and EXECUTES them.'''
