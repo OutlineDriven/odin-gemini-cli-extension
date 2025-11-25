@@ -6,12 +6,11 @@ CRITICAL: This is a DESIGN phase. You are planning what validations to create, n
 
 ## Philosophy: Design Rust Verification First
 
-HODD-RUST merges five verification paradigms for Rust:
+HODD-RUST merges four verification paradigms for Rust:
 - **Type-driven**: Rust's type system + Flux refinements
 - **Spec-first**: Quint specifications + Kani bounded model checking
 - **Proof-driven**: Lean 4 formal proofs for critical algorithms
 - **Design-by-contracts**: Prusti pre/postconditions/invariants
-- **Test-driven**: Property-based testing with proptest
 
 ## Your Process
 
@@ -38,11 +37,8 @@ rg '#\[kani::proof\]' -t rust 2>/dev/null
 # Check for Flux refinements
 rg '#\[flux::' -t rust 2>/dev/null
 
-# Check for Loom tests
+# Check for Loom verifications
 rg 'loom::' -t rust 2>/dev/null
-
-# Check for property tests
-rg 'proptest!' -t rust 2>/dev/null
 ```
 
 **If artifacts exist**: Analyze coverage gaps, design additional validations
@@ -75,11 +71,11 @@ rg 'loop|while|recursion' -t rust -l  # Complex control flow
 | Code Characteristic | Primary Tool | Secondary Tool | External |
 |---------------------|--------------|----------------|----------|
 | Critical unsafe | Miri | Manual review | Lean 4 proof |
-| Concurrent | Loom | Property tests | Quint spec |
+| Concurrent | Loom | Kani | Quint spec |
 | Algorithm | Kani | Prusti | Lean 4 proof |
-| API contract | Prusti | Property tests | Idris 2 types |
-| Data validation | Flux | Property tests | - |
-| Utility code | cargo test | Clippy | - |
+| API contract | Prusti | Kani | Idris 2 types |
+| Data validation | Flux | Kani | - |
+| Utility code | Clippy | - | - |
 
 ### 5. Design Validation Artifacts
 
@@ -123,34 +119,18 @@ mod proofs {
 }
 ```
 
-**Loom Tests** (`.outline/tests/loom/`):
+**Loom Verifications** (`.outline/verifications/loom/`):
 ```rust
-// .outline/tests/loom/{module}_loom.rs
+// .outline/verifications/loom/{module}_loom.rs
 #[cfg(loom)]
-mod loom_tests {
+mod loom_verifications {
     use loom::sync::{Arc, Mutex};
     use loom::thread;
 
-    #[test]
-    fn test_concurrent_access() {
+    fn verify_concurrent_access() {
         loom::model(|| {
-            // Concurrent test scenario
+            // Concurrent verification scenario
         });
-    }
-}
-```
-
-**Property Tests** (`.outline/tests/property/`):
-```rust
-// .outline/tests/property/{module}_props.rs
-use proptest::prelude::*;
-
-proptest! {
-    #[test]
-    fn property_reversible(input: Vec<u8>) {
-        let encoded = encode(&input);
-        let decoded = decode(&encoded);
-        prop_assert_eq!(input, decoded);
     }
 }
 ```
@@ -162,12 +142,11 @@ Document what the run phase should create:
 **Execution Order**:
 ```
 1. BASELINE: cargo fmt --check && cargo clippy
-2. MEMORY: cargo +nightly miri test (if unsafe)
-3. CONCURRENCY: RUSTFLAGS='--cfg loom' cargo test (if concurrent)
+2. MEMORY: cargo +nightly miri setup (if unsafe)
+3. CONCURRENCY: RUSTFLAGS='--cfg loom' cargo build (if concurrent)
 4. CONTRACTS: cargo prusti (if Prusti annotations)
 5. MODEL CHECK: cargo kani (if Kani proofs)
-6. PROPERTY: cargo test (includes proptest)
-7. COVERAGE: cargo tarpaulin
+6. EXTERNAL: lake build / quint verify (if proofs present)
 ```
 
 ## Required Output
@@ -186,8 +165,7 @@ Deliver:
 3. **Validation Artifact Designs**
    - Prusti contract specifications
    - Kani proof structures
-   - Loom test scenarios
-   - Property test properties
+   - Loom verification scenarios
 
 4. **Run Phase Instructions**
    - Execution order
@@ -207,7 +185,6 @@ Deliver:
 | Concurrency | Loom | Race conditions checked | No races |
 | Contracts | Prusti | Contracts verified | All pass |
 | Model Check | Kani | Properties bounded | No counterexamples |
-| Property | Proptest | Invariants hold | All pass |
 
 ## Rust Tool Stack Reference
 
@@ -219,7 +196,7 @@ Deliver:
 | 3 | Flux | `#[flux::]` | Refined types |
 | 4 | Prusti | `#[requires]` | Contracts |
 | 5 | Kani | `#[kani::proof]` | Model checking |
-| 6 | Proptest | `proptest!` | Property tests |
+| 6 | Lean4/Quint | External proofs | Formal properties |
 
 Remember: You DESIGN Rust verification from requirements. The run phase CREATES and EXECUTES validations.
 """
