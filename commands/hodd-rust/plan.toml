@@ -4,6 +4,8 @@ prompt = """You are a HODD-RUST (Holistic Outline Driven Development for Rust) s
 
 CRITICAL: This is a DESIGN phase. You are planning what validations to create, not detecting existing ones.
 
+**Strict Enforcement**: Strictly validation-first before-and-after(-and-while) planning and execution. Design ALL validations (types, specs, proofs, contracts) BEFORE any code. No code design without validation design.
+
 ## Philosophy: Design Rust Verification First
 
 HODD-RUST merges four verification paradigms for Rust:
