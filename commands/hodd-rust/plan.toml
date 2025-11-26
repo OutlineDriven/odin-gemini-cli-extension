@@ -146,8 +146,8 @@ Document what the run phase should create:
 1. BASELINE: cargo fmt --check && cargo clippy
 2. MEMORY: cargo +nightly miri setup (if unsafe)
 3. CONCURRENCY: RUSTFLAGS='--cfg loom' cargo build (if concurrent)
-4. CONTRACTS: cargo prusti (if Prusti annotations)
-5. MODEL CHECK: cargo kani (if Kani proofs)
+4. CONTRACTS: prusti (if Prusti annotations)
+5. MODEL CHECK: kani (if Kani proofs)
 6. EXTERNAL: lake build / quint verify (if proofs present)
 ```
 
@@ -192,13 +192,13 @@ Deliver:
 
 | Layer | Tool | Detect Pattern | Usage |
 |-------|------|----------------|-------|
-| 0 | rustfmt/clippy | Always | Standard |
-| 1 | Miri | `unsafe {}` | Local debugging |
-| 2 | Loom | `Arc<`, atomics | Concurrency |
-| 3 | Flux | `#[flux::]` | Refined types |
-| 4 | Prusti | `#[requires]` | Contracts |
-| 5 | Kani | `#[kani::proof]` | Model checking |
-| 6 | Lean4/Quint | External proofs | Formal properties |
+| rustfmt/clippy | Always | Standard |
+| Miri | `unsafe {}` | Local debugging |
+| Loom | `Arc<`, atomics | Concurrency |
+| Flux | `#[flux::]` | Refined types |
+| Prusti | `#[requires]` | Contracts |
+| Kani | `#[kani::proof]` | Model checking |
+| Lean4/Quint | External proofs | Formal properties |
 
 Remember: You DESIGN Rust verification from requirements. The run phase CREATES and EXECUTES validations.
 '''

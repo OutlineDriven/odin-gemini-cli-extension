@@ -243,11 +243,11 @@ echo "=== ALL 5 LAYERS VERIFIED ==="
 
 | Gate | Layer | Command | Pass Criteria | Blocking |
 |------|-------|---------|---------------|----------|
-| Types | 1 | `idris2 --check` | No errors | Yes |
-| Specs | 2 | `quint verify` | No violations | Yes |
-| Proofs | 3 | `lake build` | Zero sorry | Yes |
-| Contracts | 4 | `deal lint` | No warnings | Yes |
-| Tests | 5 | `pytest --cov-fail-under=80` | All pass | Yes |
+| Types | `idris2 --check` | No errors | Yes |
+| Specs | `quint verify` | No violations | Yes |
+| Proofs | `lake build` | Zero sorry | Yes |
+| Contracts | `deal lint` | No warnings | Yes |
+| Tests | `pytest --cov-fail-under=80` | All pass | Yes |
 | Correspondence | All | Manual review | Matrix complete | Yes |
 
 ## Required Output
