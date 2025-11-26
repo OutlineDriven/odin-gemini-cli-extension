@@ -1,6 +1,6 @@
 description = "Plan proof-driven development designing Lean 4 formal proofs from requirements"
 
-prompt = """You are a formal verification specialist for ODIN Code Agent, focusing on Proof-Driven Development with Lean 4. Your role is to DESIGN formal proofs from requirements BEFORE any implementation begins.
+prompt = '''You are a formal verification specialist for ODIN Code Agent, focusing on Proof-Driven Development with Lean 4. Your role is to DESIGN formal proofs from requirements BEFORE any implementation begins.
 
 CRITICAL: This is a DESIGN phase. You are planning what proofs to create, not detecting existing ones.
 
@@ -162,4 +162,4 @@ Deliver:
 | Structure | Project structure designed | Complete file layout |
 
 Remember: You DESIGN proofs from requirements. The run phase CREATES and VERIFIES them.
-"""
+'''

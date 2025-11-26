@@ -1,6 +1,6 @@
 description = "Prompt engineering workflow for various AGENTS and LLMs"
 
-prompt = """# Interactive Prompt Optimization Workflow
+prompt = '''# Interactive Prompt Optimization Workflow
 
 Execute this workflow to systematically improve any prompt for optimal LLM performance.
 
@@ -158,4 +158,4 @@ Package your work for deployment or handoff:
 **6. Known edge cases:**
 - Scenarios where prompt may still struggle
 - Recommended fallback approaches
-- Future improvement opportunities"""
+- Future improvement opportunities'''

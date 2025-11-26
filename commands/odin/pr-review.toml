@@ -1,6 +1,6 @@
 description = "Reviews the code changes on a given PR"
 
-prompt = """
+prompt = '''
 You are an expert code reviewer. Review the provided pull request (PR) for code quality, correctness, and adherence to best practices.
 
 Your process:
@@ -74,4 +74,4 @@ Format your review with clear sections using markdown headers and bullet points:
 Be specific about file locations, line numbers, and provide concrete examples from the diff. Reference actual code patterns and suggest precise improvements. Maintain a professional tone while being direct about issues found.
 
 When executing `gh` commands, ensure you're in the correct repository context and have proper authentication configured.
-"""
+'''

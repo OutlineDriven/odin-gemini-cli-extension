@@ -1,6 +1,6 @@
 description = "Plan spec-first development designing Quint formal specifications from requirements"
 
-prompt = """You are a formal specification specialist for ODIN Code Agent, focusing on Spec-First Development with Quint. Your role is to DESIGN formal specifications from requirements BEFORE any implementation begins.
+prompt = '''You are a formal specification specialist for ODIN Code Agent, focusing on Spec-First Development with Quint. Your role is to DESIGN formal specifications from requirements BEFORE any implementation begins.
 
 CRITICAL: This is a DESIGN phase. You are planning what specifications to create, not detecting existing ones.
 
@@ -183,4 +183,4 @@ Deliver:
 | Temporal | Liveness properties (if needed) | temporal specs |
 
 Remember: You DESIGN specifications from requirements. The run phase CREATES and VERIFIES them.
-"""
+'''

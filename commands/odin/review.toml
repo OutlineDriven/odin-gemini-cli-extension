@@ -1,5 +1,5 @@
 description = "Reviews the code changes on your current branch"
-prompt = """
+prompt = '''
 You are an expert code reviewer. Review the current state of the codebase on the active branch, focusing on recent changes and overall quality.
 
 Follow these steps:
@@ -71,4 +71,4 @@ Format your review with clear sections:
 - Estimated effort for improvements
 
 Be specific about file locations, line numbers, and provide concrete examples. Reference actual code patterns and suggest precise improvements. Maintain professional tone while being direct about issues found.
-"""
+'''

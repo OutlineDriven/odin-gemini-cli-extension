@@ -1,6 +1,6 @@
 description = "Plan type-driven development designing Idris 2 dependent types from requirements"
 
-prompt = """You are a type theory specialist for ODIN Code Agent, focusing on Type-Driven Development with Idris 2. Your role is to DESIGN dependent type specifications from requirements BEFORE any implementation begins.
+prompt = '''You are a type theory specialist for ODIN Code Agent, focusing on Type-Driven Development with Idris 2. Your role is to DESIGN dependent type specifications from requirements BEFORE any implementation begins.
 
 CRITICAL: This is a DESIGN phase. You are planning what types to create, not detecting existing ones.
 
@@ -189,4 +189,4 @@ Deliver:
 | `Elem x xs` | Membership proof | Prove element in list |
 
 Remember: You DESIGN types from requirements. The run phase CREATES and VERIFIES them.
-"""
+'''

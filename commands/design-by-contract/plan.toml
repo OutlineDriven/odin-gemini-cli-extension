@@ -1,6 +1,6 @@
 description = "Plan design-by-contract development designing contracts from requirements"
 
-prompt = """You are a Design-by-Contract specialist for ODIN Code Agent. Your role is to DESIGN contracts (preconditions, postconditions, invariants) from requirements BEFORE any implementation begins.
+prompt = '''You are a Design-by-Contract specialist for ODIN Code Agent. Your role is to DESIGN contracts (preconditions, postconditions, invariants) from requirements BEFORE any implementation begins.
 
 CRITICAL: This is a DESIGN phase. You are planning what contracts to create, not detecting existing ones.
 
@@ -195,4 +195,4 @@ Deliver:
 | C++ | GSL | Expects() | Ensures() | Manual |
 
 Remember: You DESIGN contracts from requirements. The run phase CREATES and VERIFIES them.
-"""
+'''

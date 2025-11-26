@@ -1,5 +1,5 @@
 description = "Initializes the AGENTS.md file for the codebase"
-prompt = """Please analyze this codebase and create a AGENTS.md file, which will be given to future instances of ODIN Code Agent to operate in this repository.
+prompt = '''Please analyze this codebase and create a AGENTS.md file, which will be given to future instances of ODIN Code Agent to operate in this repository.
 
 What to add:
 1. Commands that will be commonly used, such as how to build, lint, and run tests. Include the necessary commands to develop in this codebase, such as how to run a single test.
@@ -11,4 +11,4 @@ Usage notes:
 - Avoid listing every component or file structure that can be easily discovered.
 - Don't include generic development practices.
 - If there is a README.md, make sure to include the important parts.
-- Do not make up information such as "Common Development Tasks", "Tips for Development", "Support and Documentation" unless this is expressly included in other files that you read."""
+- Do not make up information such as "Common Development Tasks", "Tips for Development", "Support and Documentation" unless this is expressly included in other files that you read.'''
