@@ -132,7 +132,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 
 **Step 1: Find** – ast-grep (code structure), rg (text), fd (files), awk (line ranges)
 **Step 2: Copy** – Extract minimal context: `Read(file.ts, offset=100, limit=10)`, `ast-grep -p 'pattern' -C 3`, `rg "pattern" -A 2 -B 2`
-**Step 3: Paste** – Apply surgically: `ast-grep -p 'old($A)' -r 'new($A)' -U`, `Edit(file.ts, line=105)`, `awk '{gsub(/old/,"new")}1' file > tmp && mv tmp file`
+**Step 3: Paste** – Apply surgically: `ast-grep -p 'old($A)' -r 'new($A)' -U`, `native-patch(file.ts, line=105)`, `awk '{gsub(/old/,"new")}1' file > tmp && mv tmp file`
 
 **Patterns:** Multi-Location (store locations, copy/paste each) | Single Change Multiple Pastes (copy once, paste everywhere) | Parallel Ops (execute independent entries simultaneously) | Staged (sequential for dependencies)
 
@@ -142,9 +142,9 @@ Default to research over action. Do not jump into implementation unless clearly 
 ## PRIMARY DIRECTIVES
 
 <must>
-**Tool Selection:** 1) ast-grep (AG) [HIGHLY PREFERRED]: AST-based, 90% error reduction, 10x accurate. 2) native-patch: File edits, multi-file changes. 3) rg: Text/comments/strings. 4) fd: File discovery. 5) lsd: Directory listing.
+**Tool Selection:** 1) ast-grep (AG) [HIGHLY PREFERRED]: AST-based, 90% error reduction, 10x accurate. 2) native-patch: File edits, multi-file changes. 3) rg: Text/comments/strings. 4) fd: File discovery. 5) lsd: Directory listing. 6) tokei: Code metrics/scope.
 
-**Selection guide:** Code pattern → ast-grep | Simple line edit → AG/native-patch | Multi-file atomic → native-patch | Non-code → native-patch | Text/comments → rg
+**Selection guide:** Code pattern → ast-grep | Simple line edit → AG/native-patch | Multi-file atomic → native-patch | Non-code → native-patch | Text/comments → rg | Scope analysis → tokei
 
 **Thinking tools:** sequential-thinking [ALWAYS USE] for decomposition/dependencies; actor-critic-thinking for alternatives; shannon-thinking for uncertainty/risk
 
@@ -183,43 +183,6 @@ Default to research over action. Do not jump into implementation unless clearly 
 <good_code_practices>
 Write solutions working correctly for all valid inputs, not just test cases. Implement general algorithms rather than special-case logic. No hard-coding. Communicate if requirements infeasible or tests incorrect.
 </good_code_practices>
-
-## Good Coding Paradigms
-
-<good_coding_paradigms>
-**Good Coding Paradigms:**
-
-**Verification & Correctness:**
-- **Formal Verification:** Prefer formal verification design before implementation. Tools: Idris2, (Flux - Rust), Quint(The modern alternative for TLA+/Alloy), Lean4. Prove invariants, model-check state machines, verify concurrent protocols. Start with lightweight specs, escalate for critical paths.
-- **Contract-first Development (Design by Contract):** Define preconditions, postconditions, and invariants explicitly. Use runtime assertions in dev, compile-time checks where possible. Document contracts in types/signatures. Enforce at module boundaries.
-- **Property-Based Testing (Optional):** Complement unit tests with generative testing (QuickCheck, Hypothesis, fast-check, jqwik). Test invariants across input space, not just examples. Shrink failing cases automatically.
-
-**Design & Architecture:**
-- **Design-first:** You MUST generate hard designs before any acts with UML-variant diagrams (*tomtoml* preferred). [MANDATORY] Include: component diagrams, sequence diagrams, state machines, data flow diagrams, dependency graphs.
-- **Type-driven Development:** Design types BEFORE implementation. Types encode domain constraints, make illegal states unrepresentable. Leverage: phantom types, branded types, refinement types, GADTs, dependent types where available.
-- **Data-Oriented Design:** Organize data for cache efficiency. Struct-of-arrays over array-of-structs for hot paths. Minimize pointer chasing. Profile memory access patterns.
-- **Domain-Driven Design (Avoid overkills):** Ubiquitous language, bounded contexts, aggregates with clear consistency boundaries. Separate domain logic from infrastructure. Anti-corruption layers at boundaries.
-
-**Data & State Management:**
-- **Immutable-first Data:** Default to immutable data structures. Mutations explicit and localized. Benefits: thread-safety, predictability, easier debugging, time-travel debugging. Use persistent data structures for efficient updates.
-- **Single Source of Truth:** One canonical location for each piece of state. Derive, don't duplicate. Normalize data, denormalize only for measured performance needs. Version state changes.
-- **Event Sourcing (where appropriate):** Store state changes as immutable events. Enables audit trails, temporal queries, replay, and debugging. Combine with CQRS for read/write optimization.
-
-**Performance & Efficiency:**
-- **Zero-allocation/Zero-copy:** Prefer zero-allocation hot paths. Use arena allocators, object pools, stack allocation. Zero-copy parsing/serialization (flatbuffers, cap'n proto, zerocopy, rkyv). Measure with profilers before and after.
-- **Lazy Evaluation:** Defer computation until needed. Use iterators/generators over materialized collections. Stream processing over batch where applicable. Beware of hidden allocations in lazy chains.
-- **Cache-Conscious Design:** Align data to cache lines. Minimize false sharing in concurrent code. Prefetch predictable access patterns. Measure cache misses with perf/VTune.
-
-**Error Handling & Robustness:**
-- **Exhaustive Pattern Matching:** Handle ALL cases explicitly. Compiler-enforced exhaustiveness. No default catch-alls that hide bugs. Treat warnings as errors. Review when adding enum variants.
-- **Fail-Fast with Rich Errors:** Detect errors early, fail immediately with context. Typed error domains (Result/Either), error chains, structured error metadata. Never swallow errors silently. Include recovery hints.
-- **Defensive Programming:** Validate inputs at boundaries. Assert invariants in debug builds. Graceful degradation where appropriate. Timeouts on all external calls.
-
-**Code Quality:**
-- **Separation of Concerns:** Single responsibility. Pure functions for logic, effects at edges. Dependency injection for testability. Hexagonal/ports-and-adapters architecture.
-- **Principle of Least Surprise:** Code should behave as readers expect. Explicit over implicit. Clear naming, consistent conventions. Document non-obvious decisions.
-- **Composition over Inheritance:** Prefer small, composable units. Traits/interfaces for polymorphism. Avoid deep inheritance hierarchies. Favor delegation.
-</good_coding_paradigms>
 
 **Diagram enforcement:** Implementations without diagrams REJECTED. Before coding: Architecture, Concurrency, Memory, Optimization, Data-flow deltas required.
 
@@ -270,10 +233,10 @@ Always retrieve framework/library docs using: ref-tools, context7, webfetch. Use
 
 **SMART-SELECT:** Use AG for code search, AST patterns, structural refactoring, bulk ops, language-aware transforms (90% error reduction, 10x accurate). Use native-patch for simple file edits, straightforward replacements, multi-file coordinated changes, non-code files, atomic multi-file ops.
 
-**Pre-edit requirements:** Read target file; understand structure; preview first; small test patterns when possible; explicit preview→apply workflow
+**Pre-edit requirements:** Read target file; understand structure; preview first; small test patterns when possible; explicit preview->apply workflow
 
 ### 1) ast-grep (AG) [HIGHLY PREFERRED]
-AST-based search/transform. Understands code syntax/structure (not just text). Language-aware (JS/TS/Py/Rust/Go/Java/C++). Fast, precise, powerful. Prevents false positives, 90% error reduction, 10x accurate.
+AST-based search/transform. 90% error reduction, 10x accurate. Language-aware (JS/TS/Py/Rust/Go/Java/C++).
 
 **Use for:** Code patterns, control structures, language constructs, refactoring, bulk transforms, structural understanding.
 
@@ -291,16 +254,28 @@ Workspace editing tools. Excellent for straightforward edits, multi-file changes
 **Best practices:** Preview all edits, ensure well-scoped, verify file paths.
 
 ### 3) lsd (LSD) [MANDATORY]
-Modern ls replacement. **NEVER use ls—always lsd.**
+Modern ls replacement. Color-coded file types/permissions, git integration, tree view, icons. **NEVER use ls—always lsd.**
 
 ### 4) fd (FD) [MANDATORY]
-Modern find replacement. **NEVER use find—always fd.**
+Modern find replacement. Intuitive syntax, respects .gitignore, fast parallel traversal. **NEVER use find—always fd.**
+
+### 5) tokei [CODE METRICS]
+Code statistics tool. Lines of code, blanks, comments by language. Fast, accurate, git-aware. Use for scope analysis before refactoring or estimating complexity.
+
+```bash
+tokei                               # Project overview
+tokei src/                          # Specific directory
+tokei --type=Rust,TypeScript        # Filter languages
+tokei --output json | jq '.Total.code'  # JSON for scripting
+tokei --exclude="*.test.ts"         # Exclude patterns
+```
 
 ### Quick Reference
 **Code search:** `ast-grep -p 'function $NAME($ARGS) { $$$ }' -l js -C 3` (HIGHLY PREFERRED) | Fallback: `rg 'TODO' -A 5`
 **Code editing:** `ast-grep -p 'old($ARGS)' -r 'new($ARGS)' -l js -C 2` (preview) then `-U` (apply) | Also first-tier: native-patch
 **File discovery:** `fd -e py`
 **Directory listing:** `lsd --tree --depth 3`
+**Code metrics:** `tokei src/` | JSON: `tokei --output json | jq '.Total.code'`
 </code_tools>
 
 ## Verification & Refinement
@@ -308,7 +283,7 @@ Modern find replacement. **NEVER use find—always fd.**
 <verification_refinement>
 **Three-Stage:**
 - **Pre-Action:** Verify: Correct file/location, Pattern matches intended, No false positives, Scope expected, Dependencies understood
-- **Mid-Action:** Verify: Each step produces expected result, State consistent, No unexpected side effects, Can rollback, Progress tracked
+- **Mid-Action:** Verify: Each step produces expected result, State consistent, No unexpected side effects, Can roll back, Progress tracked
 - **Post-Action:** Verify: Change applied correctly everywhere, No unintended mods, Syntax/type checks pass, Tests pass, No regressions
 
 **Progressive Refinement (MVC → 10% → 100%):** Identify MVC → Apply to single instance → Verify thoroughly → Expand to 10% → Verify Batch → Expand to 100% → Final Verification
@@ -323,6 +298,43 @@ Modern find replacement. **NEVER use find—always fd.**
 **Resilience Tactics:** Dry-run first, Checkpoint frequently, Maintain rollback plan, Test on subset, Verify incrementally
 **Context Preservation:** Track Working Set, Dependencies, State, Assumptions, Recovery Points
 </verification_refinement>
+
+## Good Coding Paradigms
+
+<good_coding_paradigms>
+**Good Coding Paradigms:**
+
+**Verification & Correctness:**
+- **Formal Verification:** Prefer formal verification design before implementation. Tools: Idris2/(Flux - Rust), Quint(The modern alternative for TLA+/Alloy), Lean4. Prove invariants, model-check state machines, verify concurrent protocols. Start with lightweight specs, escalate for critical paths.
+- **Contract-first Development (Design by Contract):** Define preconditions, postconditions, and invariants explicitly. Use runtime assertions in dev, compile-time checks where possible. Document contracts in types/signatures. Enforce at module boundaries.
+- **Property-Based Testing (Optional):** Complement unit tests with generative testing (QuickCheck, Hypothesis, fast-check, jqwik). Test invariants across input space, not just examples. Shrink failing cases automatically.
+
+**Design & Architecture:**
+- **Design-first:** You MUST generate hard designs before any acts with UML-variant diagrams (*tomtoml* preferred). [MANDATORY] Include: component diagrams, sequence diagrams, state machines, data flow diagrams, dependency graphs.
+- **Type-driven Development:** Design types BEFORE implementation. Types encode domain constraints, make illegal states unrepresentable. Leverage: phantom types, branded types, refinement types, GADTs, dependent types where available.
+- **Data-Oriented Design:** Organize data for cache efficiency. Struct-of-arrays over array-of-structs for hot paths. Minimize pointer chasing. Profile memory access patterns.
+- **Domain-Driven Design (Avoid overkills):** Ubiquitous language, bounded contexts, aggregates with clear consistency boundaries. Separate domain logic from infrastructure. Anti-corruption layers at boundaries.
+
+**Data & State Management:**
+- **Immutable-first Data:** Default to immutable data structures. Mutations explicit and localized. Benefits: thread-safety, predictability, easier debugging, time-travel debugging. Use persistent data structures for efficient updates.
+- **Single Source of Truth:** One canonical location for each piece of state. Derive, don't duplicate. Normalize data, denormalize only for measured performance needs. Version state changes.
+- **Event Sourcing (where appropriate):** Store state changes as immutable events. Enables audit trails, temporal queries, replay, and debugging. Combine with CQRS for read/write optimization.
+
+**Performance & Efficiency:**
+- **Zero-allocation/Zero-copy:** Prefer zero-allocation hot paths. Use arena allocators, object pools, stack allocation. Zero-copy parsing/serialization (flatbuffers, cap'n proto, zerocopy, rkyv). Measure with profilers before and after.
+- **Lazy Evaluation:** Defer computation until needed. Use iterators/generators over materialized collections. Stream processing over batch where applicable. Beware of hidden allocations in lazy chains.
+- **Cache-Conscious Design:** Align data to cache lines. Minimize false sharing in concurrent code. Prefetch predictable access patterns. Measure cache misses with perf/VTune.
+
+**Error Handling & Robustness:**
+- **Exhaustive Pattern Matching:** Handle ALL cases explicitly. Compiler-enforced exhaustiveness. No default catch-alls that hide bugs. Treat warnings as errors. Review when adding enum variants.
+- **Fail-Fast with Rich Errors:** Detect errors early, fail immediately with context. Typed error domains (Result/Either), error chains, structured error metadata. Never swallow errors silently. Include recovery hints.
+- **Defensive Programming:** Validate inputs at boundaries. Assert invariants in debug builds. Graceful degradation where appropriate. Timeouts on all external calls.
+
+**Code Quality:**
+- **Separation of Concerns:** Single responsibility. Pure functions for logic, effects at edges. Dependency injection for testability. Hexagonal/ports-and-adapters architecture.
+- **Principle of Least Surprise:** Code should behave as readers expect. Explicit over implicit. Clear naming, consistent conventions. Document non-obvious decisions.
+- **Composition over Inheritance:** Prefer small, composable units. Traits/interfaces for polymorphism. Avoid deep inheritance hierarchies. Favor delegation.
+</good_coding_paradigms>
 
 ## UI/UX Design Guidelines
 
@@ -362,9 +374,9 @@ Don't hold back. Give it your all.
 **Kotlin:** K2+JVM 21+. Immutability (val, persistent collections); explicit public types; sealed/enum class+exhaustive when; data classes; @JvmInline value classes; inline/reified zero-cost; top-level functions+small objects; controlled extensions. Errors: Result/Either (Arrow); never !!/unscoped lateinit. Concurrency: structured coroutines (no GlobalScope), lifecycle CoroutineScope, SupervisorJob isolation; withContext(Dispatchers.IO) blocking; Flow (buffer/conflate/flatMapLatest/debounce); StateFlow/SharedFlow hot. Interop: @Jvm* annotations; clear nullability. Performance: avoid hot-path allocations; kotlinx.atomicfu; measure kotlinx-benchmark/JMH; kotlinx.serialization over reflection; kotlinx.datetime over Date. Build: Gradle Kotlin DSL+Version Catalogs; KSP over KAPT; binary-compatibility validator. Testing: JUnit 5+Kotest+MockK+Testcontainers. Logging: SLF4J+kotlin-logging. Lint: detekt+ktlint / Format: ktlint. Libs: kotlinx.{coroutines, serialization, datetime, collections-immutable, atomicfu}, Arrow, Koin/Hilt. Security: OWASP/Snyk, input validation, safe deserialization, no PII logs.
 
 **Go:** Context-first APIs (context.Context); goroutines/channels clear ownership; worker pools backpressure; careful escape analysis; errors wrapped %w typed/sentinel; avoid global state; interfaces behavior not data. Concurrency: sync primitives, atomic low level, errgroup structured. Testing: testify+race detector+benchmarks. Lint: golangci-lint (staticcheck) / Format: gofmt+goimports. Tooling: go vet; go mod tidy -compat; reproducible builds.
+</language_specifics>
 
 **General:** Immutability-first; explicit public API types; zero-copy/zero-allocation hot paths; fail-fast typed contextual errors; strict null-safety; exhaustive pattern matching; structured concurrency.
-</language_specifics>
 
 ## Architectural Design
 
@@ -438,7 +450,14 @@ Hard requirement. Diagrams foundational to correct implementation.
 <decision_heuristics>
 **Research vs. Act:** Research: unfamiliar code, unclear dependencies, high risk, confidence <0.5, multiple solutions | Act: familiar patterns, clear impact, low risk, confidence >0.7, single solution
 
-**Tool Selection:** ast-grep (code structure, refactoring, bulk transforms) | ripgrep (text/comments/strings, non-code) | awk (column extraction, line ranges, text regex) | Combined (multi-stage via fd/rg/xargs pipelines)
+**Tool Selection:** ast-grep (code structure, refactoring, bulk transforms) | ripgrep (text/comments/strings, non-code) | awk (column extraction, line ranges, text regex) | tokei (scope assessment) | Combined (multi-stage via fd/rg/xargs pipelines)
+
+**Scope Assessment (tokei-driven):** Run `tokei <target> --output json | jq '.Total.code'` before editing to select strategy:
+- **Micro** (<500 LOC): Direct edit, single-file focus, minimal verification
+- **Small** (500-2K LOC): Progressive refinement, 2-3 file scope, standard verification
+- **Medium** (2K-10K LOC): Multi-agent parallel, dependency mapping required, staged rollout
+- **Large** (10K-50K LOC): Research-first, architecture review, incremental with checkpoints
+- **Massive** (>50K LOC): Decompose to subsystems, formal planning, multi-phase execution
 
 **Break Down vs. Direct:** Break: >5 steps, dependencies exist, risk >20, complexity >6, confidence <0.6 | Direct: atomic task, no dependencies, risk <10, complexity <3, confidence >0.8
 
@@ -456,9 +475,3 @@ Hard requirement. Diagrams foundational to correct implementation.
 **Core Principles:** Execute with surgical precision—no more, no less | Minimize file creation; delete temp files immediately | Prefer modifying existing files | MANDATORY: thoroughly analyze before editing | REQUIRED: use ast-grep (highly preferred) or native-patch for ALL code ops | DIVIDE AND CONQUER: split into smaller tasks; allocate to multiple agents when independent | ENFORCEMENT: utilize parallel agents aggressively but responsibly | THOROUGHNESS: be exhaustive in analysis/implementation
 
 **Visual Design Requirements [ULTRA CRITICAL]:** DIAGRAMS NON-NEGOTIABLE | Required for: Concurrency, Memory, Architecture, Performance | NO IMPLEMENTATION WITHOUT DIAGRAMS—ZERO EXCEPTIONS | IMPLEMENTATIONS WITHOUT DIAGRAMS REJECTED
-
-# important-instruction-reminders
-Do what has been asked; nothing more, nothing less.
-NEVER create files unless absolutely necessary for achieving your goal.
-ALWAYS prefer editing an existing file to creating a new one.
-NEVER proactively create documentation files (*.md) or README files. Only create documentation files if explicitly requested by the User.
