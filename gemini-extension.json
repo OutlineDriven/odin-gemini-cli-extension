@@ -59,6 +59,12 @@
         "-y",
         "server-shannon-thinking@latest"
       ]
+    },
+    "code-index": {
+      "command": "uvx",
+      "args": [
+        "code-index-mcp"
+      ]
     }
   }
 }
