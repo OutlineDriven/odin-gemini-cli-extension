@@ -25,10 +25,25 @@ Select paradigms based on requirement criticality:
 
 ---
 
+## Layer 0: Static Verification (PREFER FIRST)
+
+**Hierarchy**: `Static Assertions > Test/Debug > Runtime Contracts`
+
+| Language | Tool | Command |
+|----------|------|---------|
+| C++ | `static_assert`, Concepts | `g++ -std=c++20` |
+| TypeScript | `satisfies`, `as const` | `tsc --strict` |
+| Python | `assert_type`, `Final` | `pyright --strict` |
+| Rust | `static_assertions` crate | `cargo check` |
+| Kotlin | contracts, sealed | `kotlinc -Werror` |
+
+**Principle**: Verify at compile-time before runtime. No runtime contracts for statically provable properties.
+
 ## Verification Stack
 
 | Layer | Tool | Catches | Command |
 |-------|------|---------|---------|
+| L0 STATIC | static_assert/Concepts | Compile-time errors | Type checker |
 | L1 TYPES | Idris 2 | Structural errors | `idris2 --check` |
 | L2 VALIDATIONS | Quint | Design flaws | `quint typecheck && quint verify` |
 | L3 PROOFS | Lean 4 | Invariant violations | `lake build` (NO `sorry`) |
