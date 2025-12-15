@@ -8,7 +8,6 @@
     "compressionThreshold": 0.84
   },
   "context": {
-    "loadMemoryFromIncludeDirectories": true,
     "fileFiltering": {
       "respectGitIgnore": false
     },
