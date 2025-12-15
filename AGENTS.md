@@ -140,7 +140,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 
 **Workflow:** Preview → Validate → Apply (no blind edits)
 
-**Delta diagrams (MANDATORY):** Architecture, data-flow, concurrency, memory, optimization, tidiness. Non-negotiable for non-trivial changes.
+**Diagrams (MANDATORY):** Architecture, data-flow, concurrency, memory, optimization, tidiness. Non-negotiable for non-trivial changes.
 
 **Domain Priming:** Context before design: problem class, constraints, I/O, metrics, unknowns. Identify standards/specs/APIs.
 
