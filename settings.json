@@ -5,7 +5,7 @@
   },
   "model": {
     "name": "pro",
-    "compressionThreshold": 0.84
+    "compressionThreshold": 0.8
   },
   "context": {
     "fileFiltering": {
