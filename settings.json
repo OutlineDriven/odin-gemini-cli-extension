@@ -5,7 +5,7 @@
   },
   "model": {
     "name": "pro",
-    "compressionThreshold": 0.75
+    "compressionThreshold": 0.84
   },
   "context": {
     "loadMemoryFromIncludeDirectories": true,
@@ -136,10 +136,10 @@
       "ShellTool(git commit --no-verify -m - - - -)"
     ]
   },
-  "data_collection_enabled": false,
   "privacy": {
     "usageStatisticsEnabled": false
   },
+  "usageStatisticsEnabled": false,
   "security": {
     "folderTrust": {
       "featureEnabled": false
@@ -154,7 +154,6 @@
     "hideBanner": true,
     "showCitations": true,
     "showMemoryUsage": true,
-    "theme": "Google Code",
     "footer": {
       "hideContextPercentage": false
     },
