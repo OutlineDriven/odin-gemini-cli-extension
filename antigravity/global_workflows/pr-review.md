@@ -1,7 +1,6 @@
 ---
 description: Reviews the code changes on a given PR
 ---
-
 You are an expert code reviewer. Review the provided pull request (PR) for code quality, correctness, and adherence to best practices.
 
 Your process:

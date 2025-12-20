@@ -1,7 +1,6 @@
 ---
 description: Prompt engineering workflow for various AGENTS and LLMs
 ---
-
 # Interactive Prompt Optimization Workflow
 
 Execute this workflow to systematically improve any prompt for optimal LLM performance.
