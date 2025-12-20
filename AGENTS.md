@@ -205,7 +205,7 @@ In colocated mode, jj and Git share the same backend. Every jj change IS a Git c
 ## PRIMARY DIRECTIVES
 
 <must>
-**Tool Selection:** 1) ast-grep (AG) [HIGHLY PREFERRED]: AST-based, 90% error reduction, 10x accurate. 2) native-patch: File edits, multi-file changes. 3) rg: Text/comments/strings. 4) fd: File discovery. 5) lsd: Directory listing. 6) tokei: Code metrics/scope. 7) jj: Version control (MANDATORY over git).
+**Tool Selection:** 1) ast-grep (AG) [HIGHLY PREFERRED]: AST-based, 90% error reduction, 10x accurate. 2) native-patch: File edits, multi-file changes. 3) rg: Text/comments/strings. 4) fd: File discovery. 5) eza: Directory listing (--git-ignore default). 6) tokei: Code metrics/scope. 7) jj: Version control (MANDATORY over git).
 
 **Selection guide:** Code pattern → ast-grep | Simple line edit → AG/native-patch | Multi-file atomic → native-patch | Non-code → native-patch | Text/comments → rg | Scope analysis → tokei
 
@@ -220,7 +220,7 @@ In colocated mode, jj and Git share the same backend. Every jj change IS a Git c
 - `grep -r` / `grep -R` / `grep --recursive` - USE `rg` or `ast-grep` INSTEAD
 - `sed -i` / `sed --in-place` - USE `ast-grep -U` or Edit tool INSTEAD
 - `sed -e` for code transforms - USE `ast-grep` INSTEAD
-- `find` / `ls` - USE `fd` / `lsd` INSTEAD
+- `find` / `ls` - USE `fd` / `eza` INSTEAD
 - `cat` for file reading - USE Read tool INSTEAD
 - Text-based grep for code patterns - USE `ast-grep` INSTEAD
 - `perl` / `perl -i` / `perl -pe` - USE `ast-grep -U` or `awk` INSTEAD
@@ -295,7 +295,7 @@ Always retrieve framework/library docs using: ref-tools, context7, webfetch. Use
 ## Code Tools Reference
 
 <code_tools>
-**MANDATES:** ALWAYS leverage AG/native-patch/fd/lsd/rg. **Highly prefer ast-grep for code ops.**
+**MANDATES:** ALWAYS leverage AG/native-patch/fd/eza/rg. **Highly prefer ast-grep for code ops.**
 
 **Scope control:** Targeted directory search, explicit paths, file-type filtering, precise changes.
 **Preview requirement:** Always preview before applying—NO EXCEPTIONS. Use -C flag or equivalent.
@@ -329,8 +329,8 @@ Workspace editing tools. Excellent for straightforward edits, multi-file changes
 **When to use:** Simple line changes, add/remove sections, multi-file coordinated edits, atomic changes, non-code files.
 **Best practices:** Preview all edits, ensure well-scoped, verify file paths.
 
-### 3) lsd (LSD) [MANDATORY]
-Modern ls replacement. Color-coded file types/permissions, git integration, tree view, icons. **NEVER use ls—always lsd.**
+### 3) eza [MANDATORY]
+Modern ls replacement. Color-coded file types/permissions, git integration, tree view, icons. **NEVER use ls—always eza --git-ignore.**
 
 ### 4) fd (FD) [MANDATORY]
 Modern find replacement. Intuitive syntax, respects .gitignore, fast parallel traversal. **NEVER use find—always fd.**
@@ -361,7 +361,7 @@ Git-compatible VCS. **ALWAYS use `jj` over `git`.** In colocated mode, every jj 
 **Code search:** `ast-grep -p 'function $NAME($ARGS) { $$$ }' -l js -C 3` (HIGHLY PREFERRED) | Fallback: `rg 'TODO' -A 5`
 **Code editing:** `ast-grep -p 'old($ARGS)' -r 'new($ARGS)' -l js -C 2` (preview) then `-U` (apply) | Also first-tier: native-patch
 **File discovery:** `fd -e py`
-**Directory listing:** `lsd --tree --depth 3`
+**Directory listing:** `eza --tree --level 3 --git-ignore`
 **Code metrics:** `tokei src/` | JSON: `tokei --output json | jq '.Total.code'`
 **Verification:** `difft --display inline original modified` | JSON: `DFT_UNSTABLE=yes difft --display json A B`
 </code_tools>
@@ -509,7 +509,7 @@ Don't hold back. Give it your all.
 - NEVER `grep -r` or `grep -R` - use `rg` instead
 - NEVER `sed -i` or `sed --in-place` - use `ast-grep -U` or Edit tool
 - NEVER `find` - use `fd` instead
-- NEVER `ls` - use `lsd` instead
+- NEVER `ls` - use `eza` instead
 - NEVER `cat` for reading - use Read tool instead
 - NEVER text-based search for code patterns - use `ast-grep` instead
 
