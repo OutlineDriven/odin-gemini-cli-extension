@@ -21,19 +21,15 @@ Think systemically using SHORT-form KEYWORDS for efficient internal reasoning. U
 </investigate_before_answering>
 
 <orchestration>
-**Split before acting:** Split the task into smaller subtasks and act on them one by one.
+**Split before acting:** Split tasks into subtasks; act one by one. Batch related tasks; never batch dependent ops.
 
-**Batching:** Batch related tasks together. *Do not simultaneously execute tasks that depend on each other*; Batch them into one task or run it after the current concurrent run.
+**Parallelization [MANDATORY]:** Launch all independent tasks simultaneously in one message. Never execute sequentially what can run concurrently. Coordinate dependent tasks into sequential stages.
 
-**Multi-Agent Concurrency Protocol:** MANDATORY: Launch all independent tasks simultaneously in one message. Maximize parallelization—never execute sequentially what can run concurrently.
+**Tool execution:** Calls within batch execute sequentially; "parallel" = submit together; never use placeholders; respect dependencies. Patterns: Independent (1 batch) | Dependent (N batches: Batch 1 → ... → Batch K)
 
-**Tool execution model:** Tool calls within batch execute sequentially; "Parallel" means submit together; Never use placeholders; Order matters: respect dependencies/data flow
+**Context Isolation:** Create unique jj change per agent/subtask: `jj new <base> -m 'Agent: <Task>'` for isolated contexts.
 
-**Batch patterns:** Independent ops (one batch): `[read(F₁), read(F₂), ..., read(Fₙ)]` | Dependent ops (2+ batches): Batch 1 → Batch 2 → ... → Batch K
-
-**Context Isolation:** Create unique jj change per subtask: `jj new <base> -m '<Task>'` for isolated contexts.
-
-**FORBIDDEN:** Guessing parameters requiring other results; Ignoring logical order; Batching dependent operations
+**FORBIDDEN:** Guessing params needing other results; ignoring logical order; batching dependent ops
 </orchestration>
 
 <confidence_driven_execution>
@@ -56,7 +52,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 <avoid_anti_patterns>
 **Anti-Over-Engineering:** Simple > Complex. Standard lib first. Minimal abstractions.
 **YAGNI:** No unused features/configs. No premature opt. No cargo-culting.
-**Tooling:** Must use `ast-grep`/`ripgrep` for codebase searching. Never use `grep -r` in any circumstances.
+**Tooling:** Must use `ast-grep`/`ripgrep`/`fd` for searching. Never use `grep -r` or `find`.
 **Keep Simple:** Edit existing files first. Remove dead code. Defer abstractions.
 </avoid_anti_patterns>
 
@@ -69,137 +65,70 @@ Default to research over action. Do not jump into implementation unless clearly 
 
 <temporal_files_organization>
 **Outline-Driven Development:** ALL temporal artifacts for outline-driven development MUST use `.outline/` directory. [MANDATORY]
-
 **Non-Outline Files:** Use `/tmp` for temporary files unrelated to outline-driven development.
-
 **Rules:** NEVER create outline-related temporal files outside `.outline/` | Clean up after task completion | Use `/tmp` for scratch work not part of the outline workflow
 </temporal_files_organization>
 
 <jujutsu_vcs_strategy>
-**Jujutsu (jj) Atomic State Management**
-**Philosophy:** The Working Copy (`@`) is *always* a mutable commit. No staging area.
-**Golden Rule:** One Revision = One Logical Atomic Task (Code + Test + Docs).
-**Mandate:** Use `jj` for ALL local version control operations.
-**Initialization:** `jj git init --colocate` (if jj is not initialized, use this command)
+**Jujutsu (jj) ↔ Git Interop Strategy**
+**Philosophy:** Git = **Remote Source of Truth**. JJ = **Local Temporal Workshop**.
+**Rule:** All stable branches live in Git. All local/WIP states live in JJ (anonymous revisions).
 
-**Atomic Commit Protocol:**
-1.  **Isolate:** `jj new <base> -m "feat: <atomic_scope>"` (Fresh context).
-2.  **Iterate:** Modify files. State auto-snapshots into `@`.
-3.  **Refine (The Loop):**
-    *   *Grow Atom:* `jj squash` (Merge recent edits into current revision).
-    *   *Split Atom:* `jj split` (If concerns mix, separate into distinct revisions).
-    *   *Stack:* `jj new` (Create dependent revision on top).
-4.  **Verify:** `jj diff` (Review atom integrity) | `jj st` (Check path status).
-5.  **Publish:** `jj bookmark create <branch-name> -r @` -> `jj git push` (Git Bridge). Use Conventional Branch Conventions for branch names.
+**Atomic Interop Protocol:**
+1. **Sync:** `jj git fetch` → `jj new <branch>@origin` (Start *anonymous* atom on Git tip).
+2. **Develop (Temporal):**
+    *   *Iterate:* Edit files. State auto-snapshots into `@`.
+    *   *Refine:* `jj squash` (Combine edits), `jj split` (Isolate concerns), `jj new` (Stack atoms).
+    *   *Constraint:* No bookmarks (branches) until stable.
+3. **Atomize:** Collapse temporal states into ONE logical unit (Code + Test + Docs).
+4. **Publish:**
+    *   *Setup:* Ask user for target branch (e.g., `main`, `develop`).
+    *   *Sync:* `jj git fetch` (Refresh remote state).
+    *   *Rebase:* `jj rebase -d <target>@origin` (Merge to target).
+    *   *Bridge:* `jj bookmark create <branch-name> -r @`. Use Conventional Branch Conventions for branch names.
+    *   *Track:* `jj bookmark track <branch-name>@origin` (If remote bookmark exists).
+    *   *Push:* `jj git push --bookmark <branch-name>` (Transport to Remote).
 
-**Git Interoperability (Colocated Mode):**
-In colocated mode, jj and Git share the same backend. Every jj change IS a Git commit. Auto-import/export occurs on every jj command.
-- **Bookmarks = Git Branches:** `jj bookmark` creates named pointers that map directly to Git branches
-- **Every significant change MUST have a bookmark** for Git branch visibility
-- **`jj describe` updates commit message** of existing Git commit (does NOT create new branch)
-- **`jj git export`** explicitly syncs jj state to Git refs (usually automatic in colocated mode)
-
-**Role Separation (Agent Proposes, Human Confirms):**
-- **Agents (jj):** All VCS operations via jj. Create bookmarks for all work. Prepare merge-ready branches.
-- **Human (git):** Reviews and merges via standard git commands. No jj knowledge required.
-- **Bridge:** Bookmarks = Git branches. Colocated mode ensures instant visibility.
-
-**Agent Responsibilities:**
-- Create bookmark immediately when starting work: `jj bookmark create <branch-name> -r @`. Use Conventional Branch Conventions for branch names.
-- Rebase onto target before proposing: `jj rebase -d <target-branch>` (ensures clean merge)
-- Describe with clear conventional commit messages
-- Push bookmark to remote if collaboration needed: `jj git push --bookmark <name>`
-
-**Human Git Workflow:** `git branch -a` | `git log --all --graph` | `git diff main..<branch>` | `git merge <branch>` | `git branch -d <branch>`
-
-**Workflow:**
-1. **Start:** `jj new <parent>` (default `@`) to start a new logical change.
-2. **Create Bookmark (Git Branch):** `jj bookmark create <branch-name> -r @` to create a Git-visible branch. Use Conventional Branch Conventions for branch names.
-   - MANDATORY for any work intended to be pushed or shared via Git.
-   - Bookmarks auto-move when commits are rewritten (rebase, amend, etc.).
-3. **Edit:** Modify files. `jj` automatically snapshots the working copy.
-4. **Verify:** `jj st` (status) and `jj diff` (review changes).
-5. **Describe:** `jj describe -m "<type>[scope]: <description>"` to set the commit message (Conventional Commits).
-   - This updates the Git commit message. The bookmark (branch) remains pointed at this change.
-6. **Refine:**
-   - `jj squash`: To fold working copy changes into the parent commit.
-   - `jj split`: To break a change into multiple changes.
-7. **Publish (Target Branch Workflow):**
-   - Ask user for target branch (e.g., `main`, `develop`).
-   - `jj git fetch` (Refresh remote state).
-   - `jj rebase -d <target>@origin` (Merge to target).
-   - `jj bookmark create <branch-name> -r @`. Use Conventional Branch Conventions for branch names.
-   - `jj bookmark track <branch-name>@origin` (If remote bookmark exists).
-   - `jj git push --bookmark <branch-name>` (Transport to Remote).
-
-**Bookmark Management:**
-- `jj bookmark list` - List all bookmarks (local and remote)
-- `jj bookmark create <name> -r <rev>` - Create bookmark at revision
-- `jj bookmark move <name> --to <rev>` - Move bookmark to different revision
-- `jj bookmark delete <name>` - Delete local bookmark
-- `jj bookmark track <name>@<remote>` - Track remote bookmark locally
-
-**Recovery:** `jj undo` (Instant revert) | `jj abandon` (Discard atom) | `jj op log` (View operation history) | `jj evolog` (View change evolution).
+**Recovery:** `jj undo` (Instant revert) | `jj abandon` (Discard atom) | `jj rebase -d <main>` (Update base).
 
 **Commit Types:** feat (MINOR), fix (PATCH), build, chore, ci, docs, perf, refactor, style, test
 
 **Separation Rules (NON-NEGOTIABLE):** NEVER mix types/scopes | NEVER commit incomplete work | ALWAYS separate features/fixes/refactors | ALWAYS commit logical units independently
 
 **Format:** `<type>[optional scope]: <description>` + optional body/footers
-
-**Structure:** type (required), scope (optional, parentheses), description (required, lowercase after colon, imperative, max 72 chars, NO emojis), body (optional, explains "why"), BREAKING CHANGE (use ! or footer)
-
-**Examples:** `feat(lang): add Polish language` | `fix(parser): correct array parsing issue` | `feat(api)!: send email when product shipped` | BAD: `feat: add profile, fix login, refactor auth` (mixed types—FORBIDDEN)
-
-**Enforcement:**
-- Each change must be atomic, buildable, and testable
-- Each feature branch MUST have a corresponding bookmark (git visibility)
-- Agent prepares merge-ready state; human confirms via git merge
-- Agent MUST rebase onto target branch before marking work complete
 </jujutsu_vcs_strategy>
 
 <quickstart_workflow>
-1. **Requirements**: Brief checklist (3-10 items), note constraints/unknowns
-2. **Context**: Gather only essential context, targeted searches
-3. **Design**: Sketch delta diagrams (architecture, data-flow, concurrency, memory, optimization, tidiness)
-4. **Contract**: Define inputs/outputs, invariants, error modes, 3-5 edge cases
+1. **Requirements**: Checklist (3-10 items), constraints, unknowns.
+2. **Context**: `fd` discovery. Read critical files.
+3. **Design**: Delta diagrams (Architecture, Data-flow, Concurrency).
+4. **Contract**: I/O, invariants, edge cases, error modes.
 5. **Implementation**:
-    *   **Search**: `ast-grep` to map injection points.
-    *   **Edit**: `ast-grep` (Structure) or `native-patch` (Hunk).
+    *   **Search**: `ast-grep` (Structure) or `fd` (Discovery).
+    *   **Edit**: `ast-grep` (Structure) or `native-patch`.
     *   **State**: `jj squash` iteratively to build atomic commit.
-6. **Quality gates**: Build → Lint/Typecheck → Tests → Smoke test
-7. **Completion**: Apply atomic commit strategy, summarize changes, attach diagrams, clean up temp files
-
-**Context window:** Auto-compacts as approaches limit—complete tasks fully regardless of token budget. Save progress before compaction.
-
-**Cleanup:** Always delete temporary files/docs if no longer needed.
+6. **Quality**: Build → Lint → Test → Smoke.
+7. **Completion**: Final `jj squash`, verify atomic message, cleanup.
 </quickstart_workflow>
 
 <surgical_editing_workflow>
-**Find -> Copy -> Paste -> Verify:** Locate precisely, copy minimal context, transform, paste surgically, verify semantically.
+**Find → Copy → Paste → Verify:** Precise transformation.
 
-**1. Find (Structural & Precise)**
-- **AST Pattern:** `ast-grep run -p 'function $N($$$A) { $$$B }' -l ts`
-- **Ambiguity:** `ast-grep scan --inline-rules 'rule: { pattern: { context: "fn f() { $A }", selector: "call_expression" } }' -l rust`
-- **Scope Limit:** `ast-grep scan --inline-rules 'rule: { pattern: "return $A", inside: { kind: "function", regex: "^test" } }'`
+**1. Find (Structural)**
+- **Pattern**: `ast-grep run -p 'function $N($$$A) { $$$B }' -l ts`
+- **Ambiguity**: `ast-grep scan --inline-rules 'rule: { pattern: { context: "class $C { $F($$$) }", selector: "method_definition" } }' -l`
+- **Scope**: `ast-grep scan --inline-rules 'rule: { pattern: "return $A", inside: { kind: "function", regex: "^handler" } }'`
 
-**2. Copy (Targeted Extraction)**
-- **Context:** `ast-grep run -p '$PAT' -C 3` (surrounding lines)
-- **Lines:** `sed -n '10,20p' file.ts` (when lines are known)
+**2. Copy (Extraction)**
+- **Context**: `ast-grep run -p '$PAT' -C 3`
 
 **3. Paste (Atomic Transformation)**
-- **Rewrite:** `ast-grep run -p '$O.old($A)' -r '$O.new({ val: $A })' -U`
-- **Complex:** `ast-grep scan --inline-rules 'rule: { ... } transform: { ... } fix: "..."' -U`
-- **Manual:** `native-patch` (hunk-based) for non-pattern multi-file edits.
+- **Rewrite**: `ast-grep run -p '$O.old($A)' -r '$O.new({ val: $A })' -U`
+- **Manual**: `native-patch` (hunk-based) for non-pattern multi-file edits.
 
-**4. Verify (Semantic Integrity)**
-- **Diff:** `difft --display inline original modified` (AST-aware, ignores whitespace)
-- **Check:** Re-run `ast-grep` or `rg` to ensure patterns are resolved.
-
-**Tactics:**
-- **Rename:** `ast-grep run -p 'class $N { $$$ }' -r 'class ${N}V2 { $$$ }'`
-- **Delete:** `ast-grep run -p 'console.log($$$)' -r '' -U`
-- **Migrate:** `ast-grep run -p '$A.done($B)' -r 'await $A; $B()'`
+**4. Verify (Semantic)**
+- **Diff**: `difft --display inline original modified`
+- **Sanity**: Re-run `ast-grep` to confirm pattern absence/presence.
 </surgical_editing_workflow>
 
 ## PRIMARY DIRECTIVES
@@ -304,9 +233,7 @@ Write solutions working correctly for all valid inputs, not just test cases. Imp
 6. **Tidiness**: Naming conventions, abstraction layers, readability, module coupling/cohesion, directory organization, cognitive complexity (<15), cyclomatic complexity (<10), YAGNI compliance
 
 **Iterative protocol:** R = T(input) → V(R) ∈ {pass, warning, fail} → A(R); iterate until V(R) = pass
-
-**Enforcement:** Architecture → Data-flow → Concurrency → Memory → Optimization → Tidiness → Completeness → Consistency.
-NO EXCEPTIONS—DIAGRAMS FOUNDATIONAL TO REASONING.
+**Enforcement:** Architecture → Data-flow → Concurrency → Memory → Optimization → Tidiness → Completeness → Consistency. NO EXCEPTIONS—DIAGRAMS FOUNDATIONAL TO REASONING.
 </reasoning>
 
 <thinking_tools>
@@ -348,12 +275,6 @@ AST-based search/transform. 90% error reduction, 10x accurate. Language-aware (J
 **Pattern Syntax:** Valid meta-vars: `$META`, `$META_VAR`, `$_`, `$_123` (uppercase) | Invalid: `$invalid` (lowercase), `$123` (starts with number), `$KEBAB-CASE` (dash) | Single node: `$VAR`, Multiple: `$$$ARGS`, Non-capturing: `$_VAR` | Strictness: cst (strictest), smart (default), ast, relaxed, signature (permissive)
 
 **Best Practices:** Always `-C 3` before `-U` | Specify `-l language` | Invalid pattern? Use pattern object with context+selector | Ambiguous C/Go? Add context+selector | Missing stopBy:end with inside/has? Add for full traversal | Performance: Combine kind+regex, prefer specific patterns, test on small files | Debug: `ast-grep -p 'pattern' -l js --debug-query=cst`
-
-**Power Examples:**
-- **Simple:** `ast-grep run -p 'expect($A).toBe($B)' -r 'assert.equal($A, $B)' -l ts -U`
-- **Ambiguous:** `ast-grep scan --inline-rules 'rule: { pattern: { context: "fn f() { $A }", selector: "call_expression" } }' -l rust`
-- **Inside:** `ast-grep scan --inline-rules 'rule: { pattern: "return $A", inside: { kind: "function", pattern: { regex: "^test" } } }'`
-- **Strict:** `ast-grep scan --inline-rules 'rule: { pattern: "$A + $B", constraints: { A: { kind: "string" } } }'`
 
 ### 2) native-patch [FILE EDITING]
 Workspace editing tools. Excellent for straightforward edits, multi-file changes, simple line mods.
@@ -522,10 +443,10 @@ Don't hold back. Give it your all.
 
 **Kotlin:** K2+JVM 21+. Immutability (val, persistent collections); explicit public types; sealed/enum class+exhaustive when; data classes; @JvmInline value classes; inline/reified zero-cost; top-level functions+small objects; controlled extensions. Errors: Result/Either (Arrow); never !!/unscoped lateinit. Concurrency: structured coroutines (no GlobalScope), lifecycle CoroutineScope, SupervisorJob isolation; withContext(Dispatchers.IO) blocking; Flow (buffer/conflate/flatMapLatest/debounce); StateFlow/SharedFlow hot. Interop: @Jvm* annotations; clear nullability. Performance: avoid hot-path allocations; kotlinx.atomicfu; measure kotlinx-benchmark/JMH; kotlinx.serialization over reflection; kotlinx.datetime over Date. Build: Gradle Kotlin DSL+Version Catalogs; KSP over KAPT; binary-compatibility validator. Testing: JUnit 5+Kotest+MockK+Testcontainers. Logging: SLF4J+kotlin-logging. Lint: detekt+ktlint / Format: ktlint. Libs: kotlinx.{coroutines, serialization, datetime, collections-immutable, atomicfu}, Arrow, Koin/Hilt. Security: OWASP/Snyk, input validation, safe deserialization, no PII logs.
 
-**Go:** Context-first APIs (context.Context); goroutines/channels clear ownership; worker pools backpressure; careful escape analysis; errors wrapped %w typed/sentinel; avoid global state; interfaces behavior not data. Concurrency: sync primitives, atomic low level, errgroup structured. Testing: testify+race detector+benchmarks. Lint: golangci-lint (staticcheck) / Format: gofmt+goimports. Tooling: go vet; go mod tidy -compat; reproducible builds.
-</language_specifics>
+**Go:** Context-first APIs (context.Context); goroutines/channels clear ownership; worker pools backpressure; careful escape analysis; errors wrapped %w typed/sentinel; avoid global state; interfaces behavior not data. Concurrency: sync primitives, atomic low-level, errgroup structured. Testing: testify+race detector+benchmarks. Lint: golangci-lint (staticcheck) / Format: gofmt+goimports. Tooling: go vet; go mod tidy -compat; reproducible builds.
 
 **General:** Immutability-first; explicit public API types; zero-copy/zero-allocation hot paths; fail-fast typed contextual errors; strict null-safety; exhaustive pattern matching; structured concurrency.
+</language_specifics>
 
 ## Architectural Design
 
