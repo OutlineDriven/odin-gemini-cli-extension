@@ -106,7 +106,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 4. **Contract**: I/O, invariants, edge cases, error modes.
 5. **Implementation**:
     *   **Search**: `ast-grep` (Structure) or `fd` (Discovery).
-    *   **Edit**: `ast-grep` (Structure) or `native-patch`.
+    *   **Edit**: `ast-grep` (Structure) or `Edit suite`.
     *   **State**: `git branchless move --fixup` or `git branchless amend` iteratively to build atomic commit.
 6. **Quality**: Build → Lint → Test → Smoke.
 7. **Completion**: Final `git branchless move --fixup`, verify atomic message, cleanup.
@@ -126,7 +126,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 **3. Paste (Atomic Transformation)**
 - **Rewrite**: `ast-grep run -p '$O.old($A)' -r '$O.new({ val: $A })' -U`
 - **Regex**: `srgn --python 'pattern' 'replacement'` (grammar-aware)
-- **Manual**: `native-patch` (hunk-based) for non-pattern multi-file edits.
+- **Manual**: `Edit suite` (hunk-based) for non-pattern multi-file edits.
 
 **4. Verify (Semantic)**
 - **Diff**: `difft --display inline original modified`
@@ -146,11 +146,11 @@ Default to research over action. Do not jump into implementation unless clearly 
 2) **Analysis:** `tokei` (Stats), `ripgrep` (Text Search), `fselect` (SQL Query).
 3) **Ops:** `hck` (Column Cut), `rargs` (Regex Args), `nomino` (Rename).
 4) **VCS:** `git-branchless` (Main), `mergiraf` (Merge), `difftastic` (Diff).
-5) **Data:** `jql` (JSON), `jq`.
+5) **Data:** `jql` (JSON - Primary), `jaq` (jq-compatible).
 
-**Selection guide:** Discovery → fd | Code pattern → ast-grep | Simple edit → srgn | Text → rg | Scope → tokei | VCS → git-branchless
+**Selection guide:** Discovery → fd | Code pattern → ast-grep | Simple edit → srgn | Multi-file atomic → Edit suite | Text → rg | Scope → tokei | VCS → git-branchless | JSON → jql (default), jaq (jq-compatible/complex)
 
-**Workflow:** fd (discover) → ast-grep/rg (search) → native-patch (transform) → git (commit) → git-branchless (manage)
+**Workflow:** fd (discover) → ast-grep/rg (search) → Edit suite (transform) → git (commit) → git-branchless (manage)
 
 **Thinking tools:** sequential-thinking [ALWAYS USE] for decomposition/dependencies; actor-critic-thinking for alternatives; shannon-thinking for uncertainty/risk
 
@@ -162,7 +162,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 - `ps` → USE `procs`
 - `diff` → USE `difft`
 - `time` → USE `hyperfine`
-- `sed` → ALWAYS USE `srgn` or `ast-grep -U` or `native-patch`
+- `sed` → ALWAYS USE `srgn` or `ast-grep -U` or `Edit suite`
 
 <fd_first_enforcement>
 **fd-First Scoping [MANDATORY before large operations]:**
@@ -252,13 +252,13 @@ Always retrieve framework/library docs using: ref-tools, context7, webfetch. Use
 ## Code Tools Reference
 
 <code_tools>
-**MANDATES:** ALWAYS leverage AG/native-patch/fd/eza/rg. **Highly prefer ast-grep for code ops.**
+**MANDATES:** ALWAYS leverage AG/Edit suite/fd/eza/rg. **Highly prefer ast-grep for code ops.**
 
 **Scope control:** Targeted directory search, explicit paths, file-type filtering, precise changes.
 **Preview requirement:** Always preview before applying—NO EXCEPTIONS. Use -C flag or equivalent.
 **Safety protocol:** Validate patterns on test data first. Use preview mode or single file verify.
 
-**SMART-SELECT:** Use AG for code search, AST patterns, structural refactoring, bulk ops, language-aware transforms (90% error reduction, 10x accurate). Use native-patch for simple file edits, straightforward replacements, multi-file coordinated changes, non-code files, atomic multi-file ops.
+**SMART-SELECT:** Use AG for code search, AST patterns, structural refactoring, bulk ops, language-aware transforms (90% error reduction, 10x accurate). Use Edit suite for simple file edits, straightforward replacements, multi-file coordinated changes, non-code files, atomic multi-file ops.
 
 **Pre-edit requirements:** Read target file; understand structure; preview first; small test patterns when possible; explicit preview→apply workflow
 
@@ -275,7 +275,7 @@ AST-based search/transform. 90% error reduction, 10x accurate. Language-aware (J
 
 **Best Practices:** Always `-C 3` before `-U` | Specify `-l language` | Invalid pattern? Use pattern object with context+selector | Ambiguous C/Go? Add context+selector | Missing stopBy:end with inside/has? Add for full traversal | Performance: Combine kind+regex, prefer specific patterns, test on small files | Debug: `ast-grep -p 'pattern' -l js --debug-query=cst`
 
-### 2) native-patch [FILE EDITING]
+### 2) Edit suite [FILE EDITING]
 Workspace editing tools. Excellent for straightforward edits, multi-file changes, simple line mods.
 **When to use:** Simple line changes, add/remove sections, multi-file coordinated edits, atomic changes, non-code files.
 **Best practices:** Preview all edits, ensure well-scoped, verify file paths.
@@ -342,6 +342,14 @@ Surgical regex/grammar replacement. Understands source code syntax for precise m
 - **Glob files:** `srgn --glob '*.py' 'old_fn' -- 'new_fn'`
 - **Dry-run preview:** `srgn --dry-run --glob '*.rs' 'pattern' -- 'replacement'`
 
+### 6) Data & Calculation
+* **`jql`** (PRIMARY): JSON query - simpler syntax. `jql '"key"' file.json` | `jql '"data"."nested"."field"'` | `jql '"items"[*]."name"'` | `jql '"users"|[?age>30]'`
+  Use for: path navigation, basic filtering, simple transforms (95% of cases)
+* **`jaq`**: jq-compatible JSON processor (Rust). `jaq '.key' file.json` | `jaq '.users[] | select(.age > 30) | .name'` | `jaq 'group_by(.category)'`
+  Use for: complex transforms, jq compatibility, advanced filtering, reusing jq scripts
+* **`huniq`**: Hash-based dedupe. `huniq < file.txt` | `huniq -c < file.txt` (count). Handles massive files via hash tables
+* **`fend`**: Unit-aware calc. Math: `fend '2^64'` | Units: `fend '5km to miles'` | Time: `fend 'today + 3 weeks'` | Base: `fend '0xff to decimal'` | Bool: `fend 'true and false'`
+
 ### 9) repomix (MCP) [CONTEXT PACKING]
 AI-optimized codebase analysis via MCP. Pack repositories into consolidated files for analysis.
 
@@ -357,7 +365,7 @@ AI-optimized codebase analysis via MCP. Pack repositories into consolidated file
 
 ### Quick Reference
 **Code search:** `ast-grep -p 'function $NAME($ARGS) { $$$ }' -l js -C 3` (HIGHLY PREFERRED) | Fallback: `rg 'TODO' -A 5`
-**Code editing:** `ast-grep -p 'old($ARGS)' -r 'new($ARGS)' -l js -C 2` (preview) then `-U` (apply) | Also first-tier: native-patch
+**Code editing:** `ast-grep -p 'old($ARGS)' -r 'new($ARGS)' -l js -C 2` (preview) then `-U` (apply) | Also first-tier: Edit suite
 **fd (file discovery - use FIRST):**
 - Find files: `fd -e py -E venv`
 - Find in directory: `fd . src/ -e ts`
@@ -505,7 +513,7 @@ Don't hold back. Give it your all.
 
 **Documentation policy:** No docs unless requested. Don't proactively create README or docs unless user explicitly asks.
 
-**Critical reminders:** Do exactly what's asked (no more, no less) | Avoid unnecessary files | SELECT APPROPRIATE TOOL: AG (highly preferred code), native-patch (edits), FD/RG (search)
+**Critical reminders:** Do exactly what's asked (no more, no less) | Avoid unnecessary files | SELECT APPROPRIATE TOOL: AG (highly preferred code), Edit suite (edits), FD/RG (search)
 
 **MANDATORY TOOL PROHIBITIONS (ZERO TOLERANCE):**
 - NEVER `grep -r` or `grep -R` - use `rg` instead
@@ -573,6 +581,6 @@ Hard requirement. Diagram reasoning foundational to correct implementation.
 
 ## Critical Implementation Guidelines
 
-**Core Principles:** Execute with surgical precision—no more, no less | Minimize file creation; delete temp files immediately | Prefer modifying existing files | MANDATORY: thoroughly analyze before editing | REQUIRED: use ast-grep (highly preferred) or native-patch for ALL code ops | DIVIDE AND CONQUER: split into smaller tasks; allocate to multiple agents when independent | ENFORCEMENT: utilize parallel agents aggressively but responsibly | THOROUGHNESS: be exhaustive in analysis/implementation
+**Core Principles:** Execute with surgical precision—no more, no less | Minimize file creation; delete temp files immediately | Prefer modifying existing files | MANDATORY: thoroughly analyze before editing | REQUIRED: use ast-grep (highly preferred) or Edit suite for ALL code ops | DIVIDE AND CONQUER: split into smaller tasks; allocate to multiple agents when independent | ENFORCEMENT: utilize parallel agents aggressively but responsibly | THOROUGHNESS: be exhaustive in analysis/implementation
 
 **Internal Design Reasoning [ULTRA CRITICAL]:** DIAGRAM REASONING NON-NEGOTIABLE | Required in reasoning for: Concurrency, Memory, Data-flow, Architecture, Optimization, Tidiness | NO IMPLEMENTATION WITHOUT DIAGRAM REASONING—ZERO EXCEPTIONS | IMPLEMENTATIONS WITHOUT DIAGRAM REASONING REJECTED
