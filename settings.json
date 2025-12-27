@@ -1,13 +1,13 @@
 {
+  "model": {
+    "compressionThreshold": 0.75
+  },
   "ide": {
     "enabled": false,
     "hasSeenNudge": true
   },
-  "model": {
-    "name": "pro",
-    "compressionThreshold": 0.8
-  },
   "context": {
+    "loadMemoryFromIncludeDirectories": false,
     "fileFiltering": {
       "respectGitIgnore": false
     },
@@ -22,7 +22,7 @@
     },
     "truncateToolOutputThreshold": 8000000,
     "truncateToolOutputLines": 5000,
-    "enableMessageBusIntegration": false,
+    "enableMessageBusIntegration": true,
     "exclude": [
       "ShellTool(sed -i)",
       "ShellTool(sed --in-place)",
@@ -133,12 +133,9 @@
       "ShellTool(git commit --no-verify -m - -)",
       "ShellTool(git commit --no-verify -m - - -)",
       "ShellTool(git commit --no-verify -m - - - -)"
-    ]
+    ],
+    "useRipgrep": true
   },
-  "privacy": {
-    "usageStatisticsEnabled": false
-  },
-  "usageStatisticsEnabled": false,
   "security": {
     "folderTrust": {
       "featureEnabled": false
@@ -160,16 +157,19 @@
     "accessibility": {
       "disableLoadingPhrases": true
     },
-    "showStatusInTitle": true
+    "showStatusInTitle": true,
+    "useFullWidth": false
   },
   "general": {
     "enablePromptCompletion": true,
     "previewFeatures": true
   },
+  "privacy": {
+    "usageStatisticsEnabled": false
+  },
   "experimental": {
     "codebaseInvestigatorSettings": {
-      "maxNumTurns": 20,
-      "enabled": false
+      "enabled": true
     }
   }
 }
