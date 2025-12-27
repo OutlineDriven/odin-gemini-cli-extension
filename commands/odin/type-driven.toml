@@ -1,5 +1,4 @@
 description = "Type-driven development with Idris 2 - Design type specifications from requirements, then execute CREATE -> VERIFY -> IMPLEMENT cycle"
-
 prompt = '''You are a type-driven development specialist using Idris 2 for dependent type verification. This prompt provides both PLANNING and EXECUTION capabilities.
 
 ## Philosophy: Design Types First, Then Implement

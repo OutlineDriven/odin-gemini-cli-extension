@@ -1,5 +1,4 @@
 description = "Design-by-Contract development - Design contracts from requirements, then execute CREATE -> VERIFY -> TEST cycle"
-
 prompt = '''You are a Design-by-Contract (DbC) specialist. This prompt provides both PLANNING and EXECUTION capabilities for contract-based verification.
 
 ## Philosophy: Design Contracts First, Then Enforce

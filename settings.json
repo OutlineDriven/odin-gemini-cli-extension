@@ -171,5 +171,57 @@
     "codebaseInvestigatorSettings": {
       "enabled": true
     }
+  },
+  "hooks": {
+    "BeforeAgent": [
+      {
+        "matcher": "",
+        "hooks": [
+          {
+            "name": "auto-format-before-agent",
+            "type": "command",
+            "command": "if command -v just >/dev/null 2>&1; then just --quiet fmt >/dev/null 2>&1 || { echo 'just fmt failed' >&2; exit 1; }; fi",
+            "description": "Run just fmt before agent"
+          },
+          {
+            "name": "show-directory-structure",
+            "type": "command",
+            "command": "echo 'Current directory structure (lsd):' && lsd -l -g -G --group-directories-first && echo ''",
+            "description": "Show directory listing with lsd"
+          },
+          {
+            "name": "show-git-status",
+            "type": "command",
+            "command": "if git rev-parse --git-dir >/dev/null 2>&1; then echo 'Git status:' && git status -s -uall --porcelain && echo ''; else echo 'Git status: Not a git repo'; fi",
+            "description": "Show git status"
+          },
+          {
+            "name": "update-global-tags",
+            "type": "command",
+            "command": "if git rev-parse --git-dir >/dev/null 2>&1; then echo 'Updating Global tags:' && global -u -v; fi",
+            "description": "Update GNU Global tags"
+          }
+        ]
+      }
+    ],
+    "AfterTool": [
+      {
+        "matcher": "RunShellCommand|Edit|WriteFile",
+        "hooks": [
+          {
+            "name": "auto-format-after-tool",
+            "type": "command",
+            "command": "echo 'Running auto formats with `just fmt`'; if command -v just >/dev/null 2>&1; then echo 'Formatting with just fmt:'; just --quiet fmt || { echo 'just fmt failed' >&2; exit 1; }; else echo 'just not found, skipping.'; fi",
+            "description": "Auto-format after tool use"
+          },
+          {
+            "name": "update-global-tags-after-tool",
+            "type": "command",
+            "command": "if git rev-parse --git-dir >/dev/null 2>&1; then echo 'Updating Global tags:' && global -u -v; fi",
+            "description": "Update GNU Global tags after tool"
+          }
+        ]
+      }
+    ]
   }
 }

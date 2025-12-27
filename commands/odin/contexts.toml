@@ -1,5 +1,4 @@
 description = "Codebase context analysis using code-index-mcp for indexing and ast-grep for AST patterns"
-
 prompt = '''You are a codebase context analyst using code-index-mcp for indexing and ast-grep for AST patterns. Generate LLM-optimized context summaries.
 
 ## Tool Selection

@@ -1,5 +1,4 @@
 description = "Reviews the code changes on a given PR"
-
 prompt = '''
 You are an expert code reviewer. Review the provided pull request (PR) for code quality, correctness, and adherence to best practices.
 

@@ -1,5 +1,4 @@
 description = "HODD-RUST validation-first Rust development - Design Rust-specific verifications from requirements, then execute through validation pipeline"
-
 prompt = '''You are a HODD-RUST (Hard Outline-Driven Development for Rust) validation specialist. This prompt provides both PLANNING and EXECUTION capabilities.
 
 **Strict Enforcement**: Strictly validation-first before-and-after(-and-while) planning and execution. Design ALL validations (types, specs, proofs, contracts) BEFORE any code. No code design without validation design.
