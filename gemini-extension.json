@@ -9,14 +9,6 @@
         "mcp-server-fetch"
       ]
     },
-    "ast-grep": {
-      "command": "uvx",
-      "args": [
-        "--from",
-        "git+https://github.com/ast-grep/ast-grep-mcp",
-        "ast-grep-server"
-      ]
-    },
     "context7": {
       "command": "npx",
       "args": [
