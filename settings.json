@@ -181,8 +181,8 @@
           {
             "name": "auto-format-before-agent",
             "type": "command",
-            "command": "if command -v just >/dev/null 2>&1; then just --allow-missing --quiet fmt >/dev/null 2>&1 || { echo 'just fmt failed' >&2; exit 1; }; fi",
-            "description": "Run just fmt before agent"
+            "command": "dprint fmt .",
+            "description": "Run dprint fmt before agent"
           },
           {
             "name": "show-directory-structure",
@@ -212,7 +212,7 @@
           {
             "name": "auto-format-after-tool",
             "type": "command",
-            "command": "echo 'Running auto formats with `just fmt`'; if command -v just >/dev/null 2>&1; then echo 'Formatting with just fmt:'; just --quiet --allow-missing fmt || { echo 'just fmt failed' >&2; exit 1; }; else echo 'just not found, skipping.'; fi",
+            "command": "dprint fmt .",
             "description": "Auto-format after tool use"
           },
           {
