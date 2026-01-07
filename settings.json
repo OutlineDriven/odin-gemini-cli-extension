@@ -1,7 +1,7 @@
 {
   "model": {
     "name": "auto-gemini-3",
-    "compressionThreshold": 0.75
+    "compressionThreshold": 0.5
   },
   "ide": {
     "enabled": false,
