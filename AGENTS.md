@@ -241,6 +241,10 @@ Default to research over action. Do not jump into implementation unless clearly 
 - `rm` / `rm -rf` → USE `rip` (trash-based, safer) [MANDATORY]
 - `sed` → ALWAYS USE `srgn` or `ast-grep -U` or `Edit suite`
 
+**Tool preferences:**
+
+- Prefer context args: `ast-grep -C`, `rg -C`, `bat -r`
+
 <fd_first_enforcement>
 **fd-First Scoping [MANDATORY before large operations]:**
 Before executing ast-grep scans, rg searches, or multi-file edits:
@@ -321,7 +325,7 @@ Write solutions working correctly for all valid inputs, not just test cases. Imp
 </thinking_tools>
 
 <documentation_retrieval>
-Always retrieve framework/library docs using: ref-tools, context7, webfetch. Use webfetch recursively for user URLs, follow key internal links (bounded depth 2-3 levels), prioritize official docs.
+Always retrieve framework/library docs using: context7, (ref-tool, github-grep, tavily, exa, deepwiki), webfetch. Use webfetch recursively for user URLs, follow key internal links (bounded depth 2-3 levels), prioritize official docs.
 
 **Source priority:** 1) Latest official docs, 2) API refs/specs, 3) Authoritative books/papers, 4) High-quality tutorials, 5) Community discussions (supporting evidence only)
 </documentation_retrieval>
