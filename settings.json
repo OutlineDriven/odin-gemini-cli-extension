@@ -179,12 +179,6 @@
         "matcher": "",
         "hooks": [
           {
-            "name": "auto-format-before-agent",
-            "type": "command",
-            "command": "dprint fmt .",
-            "description": "Run dprint fmt before agent"
-          },
-          {
             "name": "show-directory-structure",
             "type": "command",
             "command": "echo 'Current directory structure (lsd):' && lsd -l -g -G --group-directories-first && echo ''",
@@ -195,19 +189,6 @@
             "type": "command",
             "command": "git status",
             "description": "Show git status"
-          }
-        ]
-      }
-    ],
-    "AfterTool": [
-      {
-        "matcher": "RunShellCommand|Edit|WriteFile",
-        "hooks": [
-          {
-            "name": "auto-format-after-tool",
-            "type": "command",
-            "command": "dprint fmt .",
-            "description": "Auto-format after tool use"
           }
         ]
       }
