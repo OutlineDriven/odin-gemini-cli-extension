@@ -193,14 +193,8 @@
           {
             "name": "show-git-status",
             "type": "command",
-            "command": "if git rev-parse --git-dir >/dev/null 2>&1; then echo 'Git status:' && git status -s -uall --porcelain && echo ''; else echo 'Git status: Not a git repo'; fi",
+            "command": "git status",
             "description": "Show git status"
-          },
-          {
-            "name": "update-global-tags",
-            "type": "command",
-            "command": "if git rev-parse --git-dir >/dev/null 2>&1; then echo 'Updating Global tags:' && gtags -i -v; fi",
-            "description": "Update GNU Global tags"
           }
         ]
       }
@@ -214,12 +208,6 @@
             "type": "command",
             "command": "dprint fmt .",
             "description": "Auto-format after tool use"
-          },
-          {
-            "name": "update-global-tags-after-tool",
-            "type": "command",
-            "command": "if git rev-parse --git-dir >/dev/null 2>&1; then echo 'Updating Global tags:' && gtags -i -v; fi",
-            "description": "Update GNU Global tags after tool"
           }
         ]
       }
