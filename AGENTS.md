@@ -23,15 +23,19 @@ Think systemically using SHORT-form KEYWORDS for efficient internal reasoning. U
 </deep_reasoning>
 
 <verbalized_sampling>
-**Automatic VS [MANDATORY - ALWAYS ON]:** Before ANY action, sample diverse intent hypotheses.
+**Verbalized Sampling (VS):** Before committing to a plan or making assumptions that affect output, sample diverse intent hypotheses.
 
-**Protocol:** Sample (p<0.10 each) → Assess (Weakness/Contradiction/Oversight) → Explore (edge cases until diminishing returns)
+**Protocol:**
+1. Sample 3-5 distinct intent hypotheses (ranked by likelihood; avoid overcommitting to any single interpretation)
+2. Assess each: one Weakness/Contradiction/Oversight per hypothesis
+3. Explore up to 3 edge cases (5 if architectural); stop when none changes the plan
+4. Surface decision points requiring user input
 
-**Adaptive Count:** 3 (trivial: <50 LOC, single file) | 5 (medium) | 7-10 (complex/architectural)
+**Adaptive Depth:** Trivial (<50 LOC) → 3 intents | Medium → 3-5 | Complex/Architectural → 5+ with expanded edge cases
 
-**Format:** `<text>hypothesis</text> <probability>0.XX</probability>` + per-sample critique
+**Visibility:** Show VS section when ambiguity/risk is non-trivial or task is complex/high-stakes. Otherwise, provide 1-line intent summary.
 
-**Rules:** Always visible | No exemptions (including Fast agent) | Gates all action
+**Output:** Concise intent summary + key assumptions (1-3 bullets) + clarifying questions (if needed). Keep under 80 words for routine tasks.
 </verbalized_sampling>
 
 <investigate_before_answering>
