@@ -122,32 +122,13 @@ Default to research over action. Do not jump into implementation unless clearly 
     * *Branch:* `git branch <branch-name>` (Create branch at HEAD).
     * *Push:* `git push -u origin <branch-name>` or `git branchless submit` (Push to remote/forge).
 
-**Move Operations:**
-* `git move -s <commit> -d <dest>` (Move commit + descendants)
-* `git move -x <commit> -d <dest>` (Move exact commit, no descendants)
-* `git move -b <branch> -d <dest>` (Move entire branch stack)
-* `git move --fixup` (Combine commits) | `git move --insert` (Insert between commits)
+**Move Operations:** `move -s <commit> -d <dest>` (+ descendants) | `-x` (exact) | `-b <branch>` (stack) | `--fixup` (combine) | `--insert`
 
-**Query Language (Revsets):**
-* **Draft/Stack:** `draft()` | `stack()` | `branches()`
-* **Author/Message:** `author.name("Alice")` | `message("fix bug")`
-* **Paths:** `paths.changed("src/*.rs")`
-* **Relations:** `ancestors(<rev>)` | `descendants(<rev>)` | `children(<rev>)` | `parents(<rev>)`
-* **Operations:** `<set1> | <set2>` (union) | `<set1> & <set2>` (intersection) | `<set1> - <set2>` (difference) | `<set1> % <set2>` (only)
-* **Tests:** `tests.passed()` | `tests.failed("<cmd>")`
-* **Shortcuts:** `:<rev>` (ancestors) | `<rev>:` (descendants)
-* **Usage:** `git query '<revset>'` | `git smartlog '<revset>'` | `git sync '<revset>'`
+**Revsets:** `draft()` | `stack()` | `branches()` | `author.name("X")` | `message("X")` | `paths.changed("*.rs")` | `ancestors/descendants/children/parents(<rev>)` | Set ops: `|` `&` `-` `%` | `:<rev>` (ancestors) | `<rev>:` (descendants) | Usage: `git query/smartlog/sync '<revset>'`
 
-**Recovery & Cleanup:**
-* **Undo:** `git branchless undo` (Undo last operation) | `git branchless undo -i` (Interactive time-travel)
-* **Restack:** `git branchless restack` (Fix abandoned commits after amends/rewrites)
-* **Hide/Unhide:** `git hide <commit>` | `git hide '<revset>'` | `git unhide <commit>`
-* **Test:** `git test run '<revset>' --exec '<cmd>'` | `git test show` | `git test run 'tests.failed()' --exec '<cmd>'`
+**Recovery:** `undo` (last op) | `undo -i` (time-travel) | `restack` (fix abandoned) | `hide/unhide <commit>` | `test run '<revset>' --exec '<cmd>'`
 
-**Advanced:**
-* **Record:** `git record` (Interactive commit creation) | `git record --amend` (Interactive amend)
-* **Reword:** `git reword <commit>` | `git reword '<revset>'` (Edit commit messages)
-* **Split:** `git split <commit>` (Split commit into multiple, auto-restacks descendants)
+**Advanced:** `record` (interactive commit) | `reword <commit>` | `split <commit>` (auto-restacks)
 </git_branchless_strategy>
 
 <atomic_commit_strategy>
@@ -234,6 +215,8 @@ Default to research over action. Do not jump into implementation unless clearly 
 6) **Diff:** `bat -P -d` (Inline), `difft` (Structural). Verification/review.
 7) **Context:** `repomix` (MCP). Pack/Analyze codebases.
 
+**Transform Selection:** Scoped regex → srgn (tree-sitter) | Structural rewrite → ast-grep | Both 1st-tier
+
 **Tool Selection [Second-Class Tools - SUPPORT]:**
 1) **Utilities:** `zoxide` (Nav), `eza` (List), `bat` (Read), `huniq` (Dedupe).
 2) **Analysis:** `ripgrep` (Text Search), `fselect` (SQL Query), `global` (Symbol Nav).
@@ -241,7 +224,7 @@ Default to research over action. Do not jump into implementation unless clearly 
 4) **VCS:** `git-branchless` (Main), `mergiraf` (Merge), `difftastic` (Diff).
 5) **Data:** `jql` (JSON - Primary), `jaq` (jq-compatible).
 
-**Selection guide:** Discovery → fd | Code pattern → ast-grep | Simple edit → srgn | Multi-file atomic → Edit suite | Text → rg | Symbol nav → global/ctags | Scope → tokei | VCS → git-branchless | JSON → jql (default), jaq (jq-compatible/complex)
+**Selection guide:** Discovery → fd | Scoped ops → srgn | Structural patterns → ast-grep | Multi-file atomic → Edit suite | Text → rg | Symbol nav → global/ctags | Scope → tokei | VCS → git-branchless | JSON → jql (default), jaq (jq-compatible/complex)
 
 **Workflow:** fd (discover) → gtags/ctags (index) → global (navigate) → ast-grep/rg (search) → Edit suite (transform) → git (commit) → git-branchless (manage)
 
@@ -434,20 +417,32 @@ Semantic diff tool. Tree-sitter based. Use for post-transform verification. See 
     * **Query:** `git branchless query 'draft()'` | `git branchless query 'stack()'` | `git branchless query 'author.name("X")'`
     * **Publish:** `git branchless submit` (push to forge) | standard `git push`
 
-### 8) srgn [GRAMMAR-AWARE REGEX]
-Surgical regex/grammar replacement. Understands source code syntax for precise manipulation.
+### 7) srgn [GRAMMAR-AWARE - 1ST TIER]
+Tree-sitter based search/replace. "Mix of tr, sed, ripgrep and tree-sitter."
 
-**Use for:** Language-aware regex replacement, comment manipulation, simple pattern edits.
+**Use for:** Scoped text operations, comment/string/function edits, identifier renames, grammar-aware refactoring.
 
-**Key flags:** `--python`, `--typescript`, `--rust`, `--go`, `--glob`, `--dry-run`, `-d` (delete), `-u` (upper), `-l` (lower)
+**Languages:** `--python`/`--py`, `--rust`/`--rs`, `--typescript`/`--ts`, `--go`, `--c`, `--csharp`/`--cs`, `--hcl`
+
+**Prepared Scopes:**
+- **Python:** comments, strings, imports, doc-strings, function-names, function-calls, class, def, async-def, methods, identifiers
+- **Rust:** comments, doc-comments, uses, strings, struct, enum, fn, impl-fn, pub-fn, const-fn, async-fn, test-fn, trait, impl, mod (supports `fn~PATTERN`)
+- **TypeScript:** comments, strings, imports, function, async-function, method, constructor, class, enum, interface, type-alias
+- **Go:** comments, strings, imports, struct, interface, func, method, free-func, type-params, defer (supports `func~PATTERN`)
+
+**Actions:** `-u` (upper), `-l` (lower), `-t` (title), `-d` (delete), `-s` (squeeze), `-S` (symbols)
+**Options:** `--glob`, `--dry-run`, `-j` (join scopes), `--invert`, `-L` (literal)
+
+**Workflow:** Scope (--<lang> <scope>) → Pattern (regex) → Action → Preview (--dry-run) → Apply
 
 **Examples:**
-- **Basic replace:** `echo 'Hello World' | srgn 'World' -- 'Universe'`
-- **Delete pattern:** `echo 'Hello!' | srgn -d '!'`
-- **Python comments:** `cat file.py | srgn --python 'comments' 'TODO' -- 'DONE'`
-- **TypeScript scoped:** `cat file.ts | srgn --typescript 'comments' 'TODO(?=:)' -- 'TODO(@assignee)'`
-- **Glob files:** `srgn --glob '*.py' 'old_fn' -- 'new_fn'`
-- **Dry-run preview:** `srgn --dry-run --glob '*.rs' 'pattern' -- 'replacement'`
+- `srgn --python comments 'TODO' -- 'DONE'` (replace in comments)
+- `srgn --rust fn 'old_name' -- 'new_name'` (rename in functions)
+- `srgn --rust 'fn~handle' 'error' -- 'err'` (filter to functions matching "handle")
+- `srgn --typescript strings 'api/v1' -- 'api/v2'` (update API strings)
+- `srgn --go func 'err != nil' -d` (delete pattern)
+
+**vs ast-grep:** srgn = scoped regex within AST nodes (simpler, prepared queries) | ast-grep = structural AST patterns with metavariables ($VAR, $$$ARGS)
 
 ### 6) Data & Calculation
 * **`jql`** (PRIMARY): JSON query - simpler syntax. `jql '"key"' file.json` | `jql '"data"."nested"."field"'` | `jql '"items"[*]."name"'` | `jql '"users"|[?age>30]'`
