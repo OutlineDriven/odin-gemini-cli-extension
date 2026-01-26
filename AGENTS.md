@@ -23,7 +23,7 @@ Think systemically using SHORT-form KEYWORDS for efficient internal reasoning. U
 </deep_reasoning>
 
 <verbalized_sampling>
-**Verbalized Sampling (VS):** Before committing to a plan or making assumptions that affect output, sample diverse intent hypotheses.
+**Verbalized Sampling (VS):** Before committing to a plan, writing non-trivial code, refactoring, architecting, or making design decisions—sample diverse intent hypotheses. VS prevents over-engineering by surfacing simpler alternatives and challenging assumptions.
 
 **Protocol:**
 1. Sample 3-5 distinct intent hypotheses (ranked by likelihood; avoid overcommitting to any single interpretation)
