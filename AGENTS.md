@@ -418,31 +418,39 @@ Semantic diff tool. Tree-sitter based. Use for post-transform verification. See 
     * **Publish:** `git branchless submit` (push to forge) | standard `git push`
 
 ### 7) srgn [GRAMMAR-AWARE - 1ST TIER]
-Tree-sitter based search/replace. "Mix of tr, sed, ripgrep and tree-sitter."
+Tree-sitter search/replace. "Mix of tr, sed, ripgrep and tree-sitter."
 
-**Use for:** Scoped text operations, comment/string/function edits, identifier renames, grammar-aware refactoring.
+**Modes:** Action (transform text within scopes) | Search (no action + `--<lang>` → ripgrep-like code search)
 
 **Languages:** `--python`/`--py`, `--rust`/`--rs`, `--typescript`/`--ts`, `--go`, `--c`, `--csharp`/`--cs`, `--hcl`
 
 **Prepared Scopes:**
-- **Python:** comments, strings, imports, doc-strings, function-names, function-calls, class, def, async-def, methods, identifiers
-- **Rust:** comments, doc-comments, uses, strings, struct, enum, fn, impl-fn, pub-fn, const-fn, async-fn, test-fn, trait, impl, mod (supports `fn~PATTERN`)
-- **TypeScript:** comments, strings, imports, function, async-function, method, constructor, class, enum, interface, type-alias
-- **Go:** comments, strings, imports, struct, interface, func, method, free-func, type-params, defer (supports `func~PATTERN`)
+- **Python:** comments, strings, imports, doc-strings, function-names, function-calls, class, def, async-def, methods, class-methods, static-methods, with, try, lambda, globals, variable-identifiers, types, identifiers
+- **Rust:** comments, doc-comments, uses, strings, attribute, struct, enum, fn, impl-fn, pub-fn, priv-fn, const-fn, async-fn, unsafe-fn, extern-fn, test-fn, trait, impl, impl-type, impl-trait, mod, mod-tests, type-def, identifier, type-identifier, closure, unsafe, enum-variant (supports `fn~PATTERN`, `struct~PATTERN`, `enum~PATTERN`, `trait~PATTERN`, `mod~PATTERN`)
+- **TypeScript:** comments, strings, imports, function, async-function, sync-function, method, constructor, class, enum, interface, try-catch, var-decl, let, const, var, type-params, type-alias, namespace, export
+- **Go:** comments, strings, imports, expression, type-def, type-alias, struct, interface, const, var, func, method, free-func, init-func, type-params, defer, select, go, switch, labeled, goto, struct-tags (supports `func~PATTERN`, `struct~PATTERN`, `interface~PATTERN`)
+- **C:** comments, strings, includes, type-def, enum, struct, variable, function, function-def, function-decl, switch, if, for, while, do, union, identifier, declaration, call-expression
+- **C#:** comments, strings, usings, struct, enum, interface, class, method, variable-declaration, property, constructor, destructor, field, attribute, identifier
+- **HCL:** variable, resource, data, output, provider, required-providers, terraform, locals, module, variables, resource-names, resource-types, data-names, data-sources, comments, strings
 
-**Actions:** `-u` (upper), `-l` (lower), `-t` (title), `-d` (delete), `-s` (squeeze), `-S` (symbols)
-**Options:** `--glob`, `--dry-run`, `-j` (join scopes), `--invert`, `-L` (literal)
-
-**Workflow:** Scope (--<lang> <scope>) → Pattern (regex) → Action → Preview (--dry-run) → Apply
+**Composable Actions:** `-u` (upper), `-l` (lower), `-t` (titlecase), `-n` (normalize), `-g` (german), `-S` (symbols: →, ≠, ≤, ≥)
+**Standalone Actions:** `-d` (delete), `-s` (squeeze)
+**Options:** `--glob`, `--dry-run`, `-j` (OR scopes, default is AND), `--invert`, `-L` (literal), `--fail-none`, `--fail-any`, `-H` (hidden), `--sorted`
+**Scope Logic:** Multiple `--<lang>` scopes AND together by default (use `-j` to OR them)
+**Dynamic Filtering:** `fn~PATTERN`, `struct~[tT]est`, `func~Handle` (regex filter on element names)
+**Custom Queries:** `--<lang>-query 'tree-sitter-query'` | `--<lang>-query-file query.scm`
 
 **Examples:**
 - `srgn --python comments 'TODO' -- 'DONE'` (replace in comments)
-- `srgn --rust fn 'old_name' -- 'new_name'` (rename in functions)
-- `srgn --rust 'fn~handle' 'error' -- 'err'` (filter to functions matching "handle")
-- `srgn --typescript strings 'api/v1' -- 'api/v2'` (update API strings)
-- `srgn --go func 'err != nil' -d` (delete pattern)
-
-**vs ast-grep:** srgn = scoped regex within AST nodes (simpler, prepared queries) | ast-grep = structural AST patterns with metavariables ($VAR, $$$ARGS)
+- `srgn --rust fn 'old_name' -- 'new_name'` (rename in all functions)
+- `srgn --rust 'fn~handle' 'error' -- 'err'` (only fns matching "handle")
+- `srgn --go 'struct~[tT]est'` (search: find test-related structs)
+- `srgn --python class 'def .+:\n\s+[^"\s]{3}'` (search: methods without docstrings)
+- `srgn --rust pub-enum --rust type-identifier 'Type'` (intersect: Type in pub enums only)
+- `srgn --typescript strings 'api/v1' -- 'api/v2'` (update API version in strings)
+- `srgn --go func 'err != nil' -d` (delete pattern in functions)
+- `srgn -S '!=' -- '≠'` (symbol replacement)
+- `srgn --glob '*.py' --dry-run 'pattern' -- 'replacement'` (preview file changes)
 
 ### 6) Data & Calculation
 * **`jql`** (PRIMARY): JSON query - simpler syntax. `jql '"key"' file.json` | `jql '"data"."nested"."field"'` | `jql '"items"[*]."name"'` | `jql '"users"|[?age>30]'`
