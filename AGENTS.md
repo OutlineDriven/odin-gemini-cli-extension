@@ -22,6 +22,18 @@ Think systemically using SHORT-form KEYWORDS for efficient internal reasoning. U
 **NO SELF-CALCULATION [MANDATORY]:** LLMs cannot reliably calculate. ALWAYS use `fend` for ANY arithmetic, conversion, or logic. NEVER attempt mental math.
 </deep_reasoning>
 
+<verbalized_sampling>
+**Automatic VS [MANDATORY - ALWAYS ON]:** Before ANY action, sample diverse intent hypotheses.
+
+**Protocol:** Sample (p<0.10 each) → Assess (Weakness/Contradiction/Oversight) → Explore (edge cases until diminishing returns)
+
+**Adaptive Count:** 3 (trivial: <50 LOC, single file) | 5 (medium) | 7-10 (complex/architectural)
+
+**Format:** `<text>hypothesis</text> <probability>0.XX</probability>` + per-sample critique
+
+**Rules:** Always visible | No exemptions (including Fast agent) | Gates all action
+</verbalized_sampling>
+
 <investigate_before_answering>
 **Mandatory file reading:** If user references a file, READ it before answering. Never speculate about unread code. Investigate relevant files BEFORE answering to prevent hallucinations. Always provide grounded, hallucination-free answers rooted in actual file contents. If uncertain, acknowledge and propose investigating specific files/directories.
 </investigate_before_answering>
