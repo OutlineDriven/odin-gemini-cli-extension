@@ -28,7 +28,7 @@ Think systemically using SHORT-form KEYWORDS for efficient internal reasoning. U
 **Protocol:**
 1. Sample 3-5 distinct intent hypotheses (ranked by likelihood; avoid overcommitting to any single interpretation)
 2. Assess each: one Weakness/Contradiction/Oversight per hypothesis
-3. Explore up to 3 edge cases (5 if architectural); stop when none changes the plan
+3. Explore at least 3 edge cases (5 if architectural); stop when none changes the plan
 4. Surface decision points requiring user input
 
 **Adaptive Depth:** Trivial (<50 LOC) → 3 intents | Medium → 3-5 | Complex/Architectural → 5+ with expanded edge cases
