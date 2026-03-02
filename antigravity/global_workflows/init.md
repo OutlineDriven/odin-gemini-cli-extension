@@ -1,5 +1,6 @@
 ---
-description: Primes AGENTS.md with hard-to-rediscover conventions and rationale
+description: Generate AGENTS.md for repository onboarding
+argument-hint: <request>
 ---
 
 # Init Command
@@ -38,3 +39,5 @@ Analyze this codebase and create or improve an `AGENTS.md` file for future ODIN 
 - Do not repeat yourself. Each fact appears once.
 - Every statement must be grounded in files you actually read. Never invent.
 - If uncertain, omit the claim rather than speculate.
+
+$ARGUMENTS

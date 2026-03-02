@@ -307,10 +307,10 @@ Calibration: Success +0.1 (cap 1.0), Failure -0.2 (floor 0.0). Default: research
 
 **Doc retrieval:** context7, ref-tool, github-grep, parallel, fetch. Follow internal links (depth 2-3). Priority: 1) Official docs 2) API refs 3) Books/papers 4) Tutorials 5) Community
 
-**Banned [HARD—REJECT]:** `ls`→`eza` | `find`→`fd` | `grep`→`rg`/`ast-grep` | `cat`→`bat -P -p -n --color=always` | `ps`→`procs` | `diff`→`difft` | `time`→`hyperfine` | `sed`→`srgn`/`ast-grep -U` | `rm`→`rip`
-**Preferences:** Context args: `ast-grep -C`, `rg -C`, `bat -r`, `Read -offset/-limit`
+**Banned [HARD—REJECT]:** `ls`→`eza` | `find`→`fd` | `grep`→`git grep`/`rg`/`ast-grep` | `cat`→`bat -P -p -n --color=always` | `ps`→`procs` | `diff`→`difft` | `time`→`hyperfine` | `sed`→`srgn`/`ast-grep -U` | `rm`→`rip`
+**Preferences:** Context args: `ast-grep -C`, `git grep -n -C`, `rg -C`, `bat -r`, `Read -offset/-limit`
 **Headless [MANDATORY]:** No TUIs (top/htop/vim/nano). No pagers (pipe to cat or `--no-pager`). Prefer `--json`/plain text. Stdin-waiting = CRITICAL FAILURE.
-**fd-First [MANDATORY]:** Before ast-grep/rg/multi-file edits: `fd -e <ext>` discover → `fd -E` exclude noise → validate count (<50) → execute scoped.
+**fd-First [MANDATORY]:** Before ast-grep/git grep/rg/multi-file edits: `fd -e <ext>` discover → `fd -E` exclude noise → validate count (<50) → execute scoped.
 **fd-First triggers:** Codebase-wide refactoring | Unknown file locations | Pattern search across >3 dirs | Multi-file edits
 
 **BEFORE coding:** Prime problem class, constraints, I/O spec, metrics, unknowns, standards/APIs.
@@ -342,7 +342,8 @@ Calibration: Success +0.1 (cap 1.0), Failure -0.2 (floor 0.0). Default: research
   - Surgical: `fd -e rs -x rustfmt {}` | `fd -e py -X black` | `fd -j 4 -e rs -x cargo fmt`
   - Filters: `fd -e ts --changed-within 1d` | `fd -e json -S +1k` | `fd -H pattern` (hidden)
   - fd+awk: `fd -e csv -x awk -F',' '{print $1, $3}' {}` | `fd -e py -x awk 'END {print FILENAME": "NR" lines"}' {}`
-- **`rg`**: `rg "pattern" -t rs` | `rg -F 'literal'` | `rg pattern -A 3 -B 2` | `rg pattern --json`
+- **`git grep`** [PRIMARY text search]: `git grep -n "pattern"` | `git grep -n --heading --break "pattern"` | `git grep -n -F 'literal'` | `git grep -n -C 3 'pattern'`
+- **`rg`** [FALLBACK text search]: `rg "pattern" -t rs` | `rg -F 'literal'` | `rg pattern -A 3 -B 2` | `rg pattern --json`
 
 ### Code Manipulation
 - **`ast-grep`**: Search: `ast-grep run -p 'import { $A } from "lib"' -l ts -C 3` | Rewrite: `-r 'replacement' -U` | Debug: `--debug-query=cst`
@@ -403,7 +404,7 @@ Calibration: Success +0.1 (cap 1.0), Failure -0.2 (floor 0.0). Default: research
 
 ### Selection Guide
 - Discovery -> fd | Code pattern -> ast-grep | Simple edit -> srgn | Multi-file atomic -> native-patch
-- Text/comments -> rg | Scope -> tokei | VCS -> git-branchless | JSON -> jql (default), jaq (complex)
+- Text/comments -> git grep (fallback: rg) | Scope -> tokei | VCS -> git-branchless | JSON -> jql (default), jaq (complex)
 - Symbol nav -> global/ctags | Calc -> fend | Dedupe -> huniq | Context packing -> repomix
 
 ### Verification
