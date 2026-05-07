@@ -11,7 +11,7 @@
 ## Official Extension Installation (Recommended)
 
 ```bash
-gemini extensions install https://github.com/OutlineDriven/odin-gemini-cli-extension
+gemini extensions install https://github.com/OutlineDriven/odin-gemini-cli-extension --auto-update
 ```
 
 That easy.
