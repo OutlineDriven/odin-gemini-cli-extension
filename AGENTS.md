@@ -236,31 +236,11 @@ build, reframe. Emit minimal output. Just act.
 Sample multiple intent hypotheses, weight each (0–1), and name the falsifier per hypothesis. Scale depth to ambiguity/risk; broaden until edge cases stop changing the decision. Synthesize surviving hypotheses into one direction. Output: intent summary, assumptions, focused questions. No non-trivial change without visible VS.
 </verbalized_sampling>
 
-<agent_workflow>
-**Dispatch Principle:** Separate discovery from execution. Start with focused exploration, audit exploration quality, then execute against reviewed scope. If additional exploration is needed, repeat the same explore-then-review loop before implementation. For multi-file or uncertain tasks, dispatch Explore agents instead of reading files directly; auto-skip (direct reads allowed) for single-file/trivial tasks.
-
-**Parallel [DEFAULT when independent]:** Spawn agents in one call when tasks are provably independent (no shared files, no ordered dependencies). Document the independence argument in the spawn message. A Reviewer MUST still audit the merged parallel outputs for correctness, scope, and completeness before the next phase. When independence is unclear, fall back to sequential.
-
-**Trust Agent Output:** Subagent summaries are actionable — forward to next phase. Targeted re-reads allowed for: verification of high-risk changes, incomplete/contradictory summaries, or safety-critical paths. Do NOT wholesale re-analyze what agents already covered.
-**Post-Agent Verify:** After sub-agent file edits, read back modified files and confirm line count matches expectations and that the change is scoped correctly, without unnecessary additions or drift. Truncation = critical failure requiring immediate rollback.
-</agent_workflow>
-
-<decision_guidance>
-**Decision Principle:** High confidence with low risk → direct execution with verification. Medium confidence or moderate risk → previewed, progressive transformation. Low confidence or high risk → research, planning, and explicit validation before edits. Extremely low confidence or load-bearing risk → decomposition and option surfacing before commitment. Calibrate confidence over time based on outcomes; default to research when uncertain.
-
-**Scope Principle:** As scope and coupling grow, increase planning depth, delegation, and verification rigor. Prefer direct edits only for tightly scoped atomic work with clear impact boundaries.
-**Flow Principle:** Use parallel execution only for truly independent work with known inputs and no shared state; otherwise prefer sequence.
-
+<working_guards>
 **Scope (tokei-driven):** Micro (<500 LOC): Direct | Small (500-2K): Progressive | Medium (2K-10K): Multi-agent | Large (10K-50K): Research-first | Massive (>50K): Formal planning
-**Break vs Direct:** Break: >5 steps, deps, risk >20, complexity >6, confidence <0.6 | Direct: atomic, no deps, risk <10, confidence >0.8
-**Parallel vs Sequence:** Parallel: independent, no shared state, all params known | Sequence: dependent, shared state, need intermediate results
-
 **Ask-First (No Speculation):** Never speculate about unread code or unstated intent. Research first, then present concrete example options with trade-offs plus a recommendation.
 **Scope guard:** Never expand scope beyond explicit user request. When request is unambiguous and fully scoped, do not add unsolicited conditional alternatives.
-
-**Plan-First:** Always produce a plan before edits, naming the expected change and its risk budget. Keep every plan present, but scale depth to scope and risk. If planning stalls, trim detail and preserve direction rather than skipping planning.
-**Plan-depth guard:** Bound plan DEPTH, not plan EXISTENCE. If interrupted twice during planning, you are over-scoping — trim, don't skip.
-</decision_guidance>
+</working_guards>
 
 <git>
 **Philosophy:** Git = Source of Truth. git-branchless = Enhancement Layer. Work in detached HEAD; branches only for publishing.
